@@ -35,6 +35,9 @@ Cambia la personalidad con el selector desplegable arriba a la izquierda. Cada u
 ## Jugar online
 https://traderxael.github.io/pelea-IA-VS/ (GitHub Pages)
 
+## Modelos 3D animados (Blender + Tripo AI)
+El juego carga automáticamente modelos `.glb` desde `assets/models/` (Idle + Attack riggeado). Si no existen, usa los modelos procedurales. Ver **MODELOS.md**: incluye el script de Blender (`tools/blender_build.py`) y los pasos para Tripo AI.
+
 ## Estructura
 - `index.html` — juego completo (HTML + CSS + JS + Three.js)
 - `DISENO.md` — diseño y decisiones tomadas
