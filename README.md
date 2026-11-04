@@ -36,6 +36,14 @@ Cambia de arma con un toque en la barra de armas.
 - Quien la toma primero hace daño x2.0/x2.6 durante 22 segundos
 - Período de gracia de 1.5s antes de poder recogerla
 
+## Animaciones
+- 🚶 **Caminar** — piernas y brazos se balancean al moverse
+- 💥 **Reacción al impacto** — el luchador se inclina hacia atrás y sale empujado
+- 😵 **KO** — el derrotado cae hacia atrás y se hunde en la arena
+- 🏆 **Victoria** — el ganador salta de celebración
+- 🎥 **Sacudida de cámara** en golpes fuertes (martillo, especial, KO final)
+- Idle y Attack importados de Blender (glTF) para TITÁN, VOLT y Soldado
+
 ## Sonidos
 Cada golpe suena distinto según el arma: 🥊 golpe seco, 🗡️ clang metálico, 🔨 boom grave, 🥢 doble clip, 🔫 pew de plasma, 🛡️ ping de bloqueo, + fanfarria al obtener la legendaria
 

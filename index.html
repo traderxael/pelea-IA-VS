@@ -252,6 +252,9 @@ function makeSoldier(color, accent){
   return g;
 }
 
+// Estado global de animaciones de impacto/KO
+let shakeT=0, koState=null;
+
 class Fighter{
   constructor(mesh, name, isAI){
     this.mesh=mesh; this.name=name; this.isAI=isAI;
@@ -259,6 +262,8 @@ class Fighter{
     this.vel=new THREE.Vector3(); this.facing=0;
     this.state='idle'; this.timer=0; this.cooldown=0; this.hurt=0;
     this.blocking=false; this.attackType=null;
+    this.hurtTilt=0; this.kb=new THREE.Vector3(); this.walkPhase=0;
+    this.legendaryUntil=0; this.prevWeapon=null;
     // Adaptativa
     this.memory={closeAttacks:0, farAttacks:0, blocks:0, counters:0, hitsTaken:0, lastOppMove:0, aggression:.45, defense:.35, danger:0};
     // Personalidad de IA rival (seleccionable)
@@ -275,13 +280,19 @@ class Fighter{
     };
   }
   cfg(){ return this.personaCfg[this.persona] || this.personaCfg.adaptativa; }
-  reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; }
-  hit(dmg, attacker){
+  reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; this.hurtTilt=0; this.kb.set(0,0,0); this.mesh.rotation.x=0; }
+  hit(dmg, attacker, heavy){
     if(this.blocking && Math.random()<.75){ 
       if(attacker) attacker.memory.counters++;
       this.memory.blocks++; this.flash(0x93c5fd); showToast('¡BLOQUEO!'); this.energy=Math.min(100,this.energy+6); sfx('block'); return 0;
     }
     this.hp=Math.max(0,this.hp-dmg); this.hurt=.25; this.memory.hitsTaken++;
+    this.hurtTilt=1;
+    if(attacker){
+      const d=this.pos.clone().sub(attacker.pos); d.y=0; d.normalize();
+      this.kb.copy(d.multiplyScalar(heavy?6.5:4.5));   // empujón hacia atrás
+    }
+    if(heavy) shakeT=.55;
     this.flash(0xff4444); burst(this.pos.x,1.5,this.pos.z,0xffaa00);
     this.energy=Math.min(100,this.energy+4);
     showDmg(this.pos, dmg);
@@ -663,7 +674,7 @@ document.getElementById('personaSel').onchange=e=>{
   showToast(cfg.label+' · '+cfg.desc);
   p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
 };
-document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;roundOver=false;document.getElementById('banner').style.display='none';showToast('VOLT eligió '+p2.weapon.label+' 🎲');};
+document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;document.getElementById('banner').style.display='none';showToast('VOLT eligió '+p2.weapon.label+' 🎲');};
 
 function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-f.pos.z); f.mesh.rotation.y=f.facing; }
 function dist(a,b){ return a.pos.distanceTo(b.pos); }
@@ -696,7 +707,7 @@ function tryAttack(f,type){
       let dmg = type==='special'?22:(type==='kick'?14:9);
       if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
       dmg=Math.round(dmg*w.dmg*comboBonus(f));
-      const dealt=target.hit(dmg,f);
+      const dealt=target.hit(dmg,f,type==='special'||w.key==='hammer');
       registerHit(f,dealt);
       if(dealt>0){
         if(type==='special') sfx('special');
@@ -817,11 +828,14 @@ function clampArena(f){ f.pos.x=THREE.MathUtils.clamp(f.pos.x,-7.5,7.5); f.pos.z
 let wins1=0,wins2=0,timeLeft=99;
 function endRound(winner){
   roundOver=true;
+  const loser = winner===p1 ? p2 : p1;
+  koState={loser, winner, t:0};
+  shakeT=.6;
   if(winner===p1) wins1++; else wins2++;
   document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
   const b=document.getElementById('banner'); b.textContent=(winner===p1?`🏆 ¡${p1.name} GANA!`:'🤖 ¡VOLT ROJO GANA!'); b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
-  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;roundOver=false;b.style.display='none';timeLeft=99;showToast('VOLT eligió '+p2.weapon.label+' 🎲');},2600);
+  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;showToast('VOLT eligió '+p2.weapon.label+' 🎲');},2600);
 }
 setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
   if(timeLeft<=0){ endRound(p1.hp>=p2.hp?p1:p2); } } },1000);
@@ -869,6 +883,47 @@ function aiAnim(dt){
   p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
 }
 
+function updateWalkAnim(dt){
+  for(const f of [p1,p2]){
+    const u=f.mesh.userData;
+    const last=f._lastPos||f.pos.clone();
+    const d=f.pos.distanceTo(last);
+    f._lastPos=f.pos.clone();
+    const speed=d/Math.max(dt,.001);
+    if(f.state==='attack'&&f.timer>0){
+      // en ataque respeta la pose de ataque
+    } else if(speed>.5){
+      f.walkPhase=(f.walkPhase||0)+dt*speed*2.1;
+      const s=Math.sin(f.walkPhase)*.65;
+      u.legL.rotation.x=s; u.legR.rotation.x=-s;
+      if(u.isGltf){ u.armL.rotation.x=-s*.55; u.armR.rotation.x=s*.55; }
+    } else {
+      const k=Math.pow(.02,dt);
+      u.legL.rotation.x*=k; u.legR.rotation.x*=k;
+      if(u.isGltf){ u.armL.rotation.x*=k; u.armR.rotation.x*=k; }
+    }
+    // reacción al impacto: inclinar hacia atrás + empujón que se desvanece
+    f.hurtTilt=Math.max(0,(f.hurtTilt||0)-dt*2.2);
+    if(!koState||koState.loser!==f){
+      f.mesh.rotation.x=-f.hurtTilt*.4;
+      if(f.kb.lengthSq()>0.01){
+        f.pos.addScaledVector(f.kb,dt);
+        f.kb.multiplyScalar(Math.exp(-5*dt));
+        clampArena(f);
+      }
+    }
+  }
+}
+function updateKo(dt){
+  if(!koState) return;
+  koState.t+=dt;
+  const {loser, winner}=koState;
+  const p=Math.min(1, koState.t*1.8);
+  loser.mesh.rotation.x=-p*1.5;                 // cae hacia atrás y se hunde
+  loser.mesh.position.y=.3-p*.3;
+  const hop=Math.abs(Math.sin(koState.t*7))*.55*Math.max(0,1-koState.t/2.5);
+  winner.mesh.position.y=.3+hop;                // salta de celebración
+}
 const clock=new THREE.Clock();
 function loop(){
   requestAnimationFrame(loop);
@@ -882,6 +937,8 @@ function loop(){
   else if(autoMode && p2.combo>=2) comboEl.textContent='🔥 VOLT x'+p2.combo;
   else comboEl.textContent='';
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
+  updateWalkAnim(dt);
+  updateKo(dt);
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.userData.life-=dt*1.4; p.position.addScaledVector(p.userData.v,dt); p.userData.v.y-=6*dt;
     p.scale.setScalar(Math.max(.01,p.userData.life)); if(p.userData.life<=0){scene.remove(p); particles.splice(i,1);}
@@ -896,7 +953,7 @@ function loop(){
     if(pr.position.distanceTo(target.pos.clone().setY(1.3))<1.05){
       const w=weaponOf(pr.userData.owner);
       let dmg=Math.round(pr.userData.dmg*w.dmg*comboBonus(pr.userData.owner));
-      const dealt=target.hit(dmg,pr.userData.owner);
+      const dealt=target.hit(dmg,pr.userData.owner, pr.userData.dmg>=26);
       registerHit(pr.userData.owner,dealt);
       sfx('plasma');
       burst(pr.position.x,1.4,pr.position.z,0x22d3ee);
@@ -912,6 +969,11 @@ function loop(){
   // cámara sigue el punto medio
   const mid=new THREE.Vector3().addVectors(p1.pos,p2.pos).multiplyScalar(.5);
   camera.position.lerp(new THREE.Vector3(mid.x*.6,7,11),.06);
+  if(shakeT>0){ // sacudida de cámara en golpes fuertes y KO
+    shakeT-=dt;
+    camera.position.x+=(Math.random()-.5)*shakeT*1.5;
+    camera.position.y+=(Math.random()-.5)*shakeT*1.1;
+  }
   camera.lookAt(mid.x,1.2,mid.z);
   document.getElementById('hp1').style.width=(p1.hp/(p1.maxHp||100)*100)+'%'; document.getElementById('hp1').className='fill hp'+(p1.hp/(p1.maxHp||100)<30?' low':'');
   document.getElementById('hp2').style.width=(p2.hp/(p2.maxHp||100)*100)+'%'; document.getElementById('hp2').className='fill hp'+(p2.hp/(p2.maxHp||100)<30?' low':'');
