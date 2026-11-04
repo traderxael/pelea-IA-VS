@@ -14,6 +14,12 @@ Abre `index.html` en tu celular o computadora. En PC: WASD para moverte, J=puño
 
 Barras de vida y energía, daño flotante, partículas, cámara que sigue la acción, rondas con contador y modo AUTO para ver pelear a ambas IAs.
 
+## Luchadores (elige tu personaje)
+- 🤖 **Titán Azul** — robot clásico: 100 de vida, velocidad normal
+- 🪖 **Soldado Verde** — humano con casco, chaleco táctico y rifle: 85 de vida pero **+18% de velocidad**
+
+Cambia de personaje con el selector "🤖 Titán / 🪖 Soldado" arriba a la izquierda.
+
 ## Personalidades de IA
 - 🧠 **Adaptativa** — aprende de tu patrón: si atacas mucho de cerca, sube bloqueo y contraataque
 - 🔥 **Agresiva** — ataca sin parar, más rápida y daño +25%
