@@ -92,10 +92,11 @@
 </div>
 
 <script type="importmap">
-{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
 </script>
 <script type="module">
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
@@ -281,6 +282,50 @@ class Fighter{
   flash(c){ this.mesh.traverse(o=>{ if(o.material && o.material.emissive){ o.material.emissive.setHex(c); setTimeout(()=>o.material.emissive.setHex(0x000000),90); }}); }
 }
 
+// ── Modelos glTF animados (de Blender o Tripo AI) ──────────────────────────
+// Si existe assets/models/<kind>.glb lo usa con sus animaciones (Idle/Attack);
+// si no, usa el modelo procedural de arriba. Sin .glb → respaldo automático.
+const mixers=[];
+const gltfPreloaded={robot:null, soldier:null};
+const gltfLoader=new GLTFLoader();
+function gltfFindNode(mesh, ...names){
+  let found=null;
+  mesh.traverse(o=>{
+    if(found) return;
+    const n=(o.name||'').toLowerCase();
+    if(names.some(s=>n.includes(s))) found=o;
+  });
+  return found;
+}
+function applyGltf(mesh){
+  mesh.traverse(o=>{ if(o.isMesh){ o.castShadow=true; if(o.material) o.material.needsUpdate=true; } });
+  const find=gltfFindNode.bind(null, mesh);
+  mesh.userData.armL=find('arm_l','arml','leftarm','upperarmleft','upper_arm_l')||new THREE.Group();
+  mesh.userData.armR=find('arm_r','armr','rightarm','upperarmright','upper_arm_r')||new THREE.Group();
+  mesh.userData.legL=find('leg_l','legl','leftleg','thighleft','thigh_l')||new THREE.Group();
+  mesh.userData.legR=find('leg_r','legr','rightleg','thighright','thigh_r')||new THREE.Group();
+  mesh.userData.head=find('head','helmet','visor')||new THREE.Group();
+  mesh.userData.torso=mesh;
+  return mesh;
+}
+function preloadGltf(path, kind){
+  return new Promise(resolve=>{
+    gltfLoader.load(path, gltf=>{
+      const mesh=applyGltf(gltf.scene);
+      const mixer=new THREE.AnimationMixer(mesh);
+      const idle=THREE.AnimationClip.findByName(gltf.animations,'Idle') || gltf.animations.find(c=>/idle|stand/i.test(c.name)) || gltf.animations[0];
+      const attack=gltf.animations.find(c=>/attack|punch|jab|hit/i.test(c.name));
+      if(idle){ mixer.clipAction(idle).play(); }
+      mesh.userData.mixer=mixer; mesh.userData.attackClip=attack||null; mesh.userData.idleClip=idle||null; mesh.userData.clips=gltf.animations;
+      mixers.push(mixer);
+      gltfPreloaded[kind]=mesh;
+      resolve(true);
+    }, undefined, ()=>resolve(false)); // sin archivo → respaldo procedural
+  });
+}
+preloadGltf('assets/models/titan.glb','robot');
+preloadGltf('assets/models/soldier.glb','soldier');
+
 const p1mesh=makeRobot(0x2563eb,0x38bdf8); scene.add(p1mesh);
 const p2mesh=makeRobot(0xdc2626,0xff6600); scene.add(p2mesh);
 const p1=new Fighter(p1mesh,'TITÁN AZUL',false);
@@ -288,22 +333,28 @@ const p2=new Fighter(p2mesh,'VOLT ROJO',true);
 p1.reset(-3,0); p2.reset(3,0);
 
 // Selección de personaje: Robot Titán 🤖 o Soldado 🪖
-let soldierMesh=null;
 const charSpeeds={robot:1.0, soldier:1.18};        // el soldado es más rápido
 const charHps={robot:100, soldier:85};              // pero tiene menos vida
-document.getElementById('charSel').onchange=e=>{
-  const kind=e.target.value;
+function swapP1(kind){
   const pos=p1.pos.clone();
-  scene.remove(p1mesh);
-  p1.mesh = kind==='soldier' ? makeSoldier(0x16a34a,0x84cc16) : makeRobot(0x2563eb,0x38bdf8);
-  p1.mesh.position.copy(pos);
-  p1.pos = p1.mesh.position;
-  p1.maxHp = charHps[kind]; p1.hp = charHps[kind];
-  p1.speedMul = charSpeeds[kind];
-  p1.name = kind==='soldier'?'🪖 SOLDADO VERDE':'TITÁN AZUL';
-  scene.add(p1.mesh);
+  scene.remove(p1.mesh);
+  let mesh=null;
+  if(gltfPreloaded[kind]){
+    mesh=gltfPreloaded[kind]; mesh.position.copy(pos); scene.add(mesh);
+    showToast('🤖 MODELO 3D BLENDER/TRIPO CARGADO');
+  } else {
+    mesh = kind==='soldier' ? makeSoldier(0x16a34a,0x84cc16) : makeRobot(0x2563eb,0x38bdf8);
+    mesh.position.copy(pos); scene.add(mesh);
+  }
+  p1.mesh=mesh; p1.pos=mesh.position;
+  p1.maxHp=charHps[kind]; p1.hp=charHps[kind];
+  p1.speedMul=charSpeeds[kind];
+  p1.name=kind==='soldier'?'🪖 SOLDADO VERDE':'TITÁN AZUL';
   document.querySelector('#youTag').textContent = kind==='soldier'?'🪖 SOLDADO':'🤖 TÚ';
-  showToast(kind==='soldier'?'🪖 SOLDADO: rápido (+18% vel), vida 85':'🤖 TITÁN: vida 100, vel normal');
+}
+document.getElementById('charSel').onchange=e=>{
+  swapP1(e.target.value);
+  showToast(e.target.value==='soldier'?'🪖 SOLDADO: rápido (+18% vel), vida 85':'🤖 TITÁN: vida 100, vel normal');
 };
 p1.maxHp=100; p2.maxHp=100; p1.speedMul=1; p2.speedMul=1;
 
@@ -368,6 +419,10 @@ function tryAttack(f,type){
   if(roundOver||f.cooldown>0||f.hurt>0) return;
   if(type==='special' && f.energy<35){ showToast('Necesitas 35⚡'); return; }
   f.state='attack'; f.timer=.32; f.attackType=type;
+  if(f.mesh.userData.attackClip && f.mesh.userData.mixer){
+    const a=f.mesh.userData.mixer.clipAction(f.mesh.userData.attackClip);
+    a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play();
+  }
   f.cooldown = type==='special'?.9:(type==='kick'?.55:.38);
   if(type==='special') f.energy-=35;
   const target = f===p1?p2:p1;
@@ -536,11 +591,11 @@ function playerUpdate(dt){
 
 function aiAnim(dt){
   p2.timer-=dt; p2.cooldown-=dt; if(p2.hurt>0)p2.hurt-=dt;
-  const u=p2mesh.userData;
+  const u=p2.mesh.userData;
   if(p2.state==='attack'&&p2.timer>0){ u.armR.rotation.x=-1.6; if(p2.attackType==='kick') u.legR.rotation.x=-1.2; }
   else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
   if(p2.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
-  p2mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
+  p2.mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
   p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
 }
 
@@ -548,12 +603,13 @@ const clock=new THREE.Clock();
 function loop(){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,clock.getDelta());
+  for(const mx of mixers) mx.update(dt);   // animaciones glTF (Blender / Tripo AI)
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.userData.life-=dt*1.4; p.position.addScaledVector(p.userData.v,dt); p.userData.v.y-=6*dt;
     p.scale.setScalar(Math.max(.01,p.userData.life)); if(p.userData.life<=0){scene.remove(p); particles.splice(i,1);}
   }
-  p1mesh.position.copy(p1.pos); p2mesh.position.copy(p2.pos);
+  p1.mesh.position.copy(p1.pos); p2.mesh.position.copy(p2.pos);
   // cámara sigue el punto medio
   const mid=new THREE.Vector3().addVectors(p1.pos,p2.pos).multiplyScalar(.5);
   camera.position.lerp(new THREE.Vector3(mid.x*.6,7,11),.06);
