@@ -26,6 +26,18 @@ Barras de vida y energía, daño flotante, partículas, cámara que sigue la acc
 
 Cambia de arma con un toque en la barra de armas.
 
+## Combos
+- Acierta 3+ golpes seguidos sin recibir daño y tu daño sube **+35%** (¡aparece el contador 🔥 xN!)
+- El contador aparece a la izquierda si la IA lo logra (en modo AUTO)
+
+## Armas legendarias
+- 🐉 **Espada de Fuego** y ⚡ **Mjölnir** caen en la arena con un **haz de luz**
+- Quien la toma primero hace daño x2.0/x2.6 durante 22 segundos
+- Período de gracia de 1.5s antes de poder recogerla
+
+## Sonidos
+Cada golpe suena distinto según el arma: 🥊 golpe seco, 🗡️ clang metálico, 🔨 boom grave, 🥢 doble clip, 🔫 pew de plasma, 🛡️ ping de bloqueo, + fanfarria al obtener la legendaria
+
 ## Luchadores (elige tu personaje)
 - 🤖 **Titán Azul** — robot clásico: 100 de vida, velocidad normal
 - 🪖 **Soldado Verde** — humano con casco, chaleco táctico y rifle: 85 de vida pero **+18% de velocidad**

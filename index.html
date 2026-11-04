@@ -35,7 +35,9 @@
   .topbtns select{background:#0f172a}
   .weaponbar{position:fixed;top:150px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:7;max-width:98vw;overflow-x:auto;padding:5px 7px;background:rgba(6,10,25,.65);border-radius:14px;border:1px solid #ffffff22}
   .wpn{background:#16213a;border:2px solid transparent;color:#dbeafe;border-radius:11px;padding:6px 9px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:none}
-  .wpn.active{border-color:#38bdf8;background:#0b2545;box-shadow:0 0 14px #38bdf866}
+  .wpn.active{border-color:#fbbf24;background:#3a2505;box-shadow:0 0 16px #fbbf2466}
+  .wpn.legendary{border-color:#facc15;background:#422006;box-shadow:0 0 18px #facc1599}
+  #combo{position:fixed;top:206px;left:14px;z-index:7;font-size:26px;font-weight:900;color:#fde047;text-shadow:0 0 14px #f97316,0 2px 6px #000;letter-spacing:1px;pointer-events:none}
   #hint{text-align:center;font-size:12px;opacity:.85;margin-top:4px}
   @media(min-width:800px){.controls{height:150px}}
 </style>
@@ -84,6 +86,7 @@
 </div>
 
 <div class="weaponbar" id="weaponBar"></div>
+<div id="combo"></div>
 <div id="banner"></div>
 <div id="toast"></div>
 
@@ -276,7 +279,7 @@ class Fighter{
   hit(dmg, attacker){
     if(this.blocking && Math.random()<.75){ 
       if(attacker) attacker.memory.counters++;
-      this.memory.blocks++; this.flash(0x93c5fd); showToast('¡BLOQUEO!'); this.energy=Math.min(100,this.energy+6); return 0;
+      this.memory.blocks++; this.flash(0x93c5fd); showToast('¡BLOQUEO!'); this.energy=Math.min(100,this.energy+6); sfx('block'); return 0;
     }
     this.hp=Math.max(0,this.hp-dmg); this.hurt=.25; this.memory.hitsTaken++;
     this.flash(0xff4444); burst(this.pos.x,1.5,this.pos.z,0xffaa00);
@@ -368,9 +371,11 @@ const WEAPONS={
   hammer:  {key:'hammer',  label:'🔨 Martillo',icon:'🔨', dmg:2.0,  range:3.0, cd:1.75,kind:'melee',  desc:'Mucho daño, lento'},
   nunchaku:{key:'nunchaku',label:'🥢 Nunkus',  icon:'🥢', dmg:0.75, range:3.6, cd:0.5, kind:'melee',  desc:'Ataque rápido'},
   spear:   {key:'spear',   label:'🪄 Lanza',   icon:'🪄', dmg:1.15, range:6.3, cd:0.9, kind:'melee',  desc:'Muy largo alcance'},
-  plasma:  {key:'plasma',  label:'🔫 Plasma',  icon:'🔫', dmg:1.4,  range:0,   cd:1.4, kind:'ranged', desc:'Proyectil a distancia'}
+  plasma:  {key:'plasma',  label:'🔫 Plasma',  icon:'🔫', dmg:1.4,  range:0,   cd:1.4, kind:'ranged', desc:'Proyectil a distancia'},
+  fuego:   {key:'fuego',   label:'🐉 Espada de Fuego', icon:'🐉', dmg:2.0, range:5.5, cd:0.7, kind:'melee', desc:'¡Legendaria!', legendary:true},
+  mjolnir: {key:'mjolnir', label:'⚡ Mjölnir',          icon:'⚡', dmg:2.6, range:3.6, cd:1.2, kind:'melee', desc:'¡Legendaria!', legendary:true}
 };
-const WEAPON_KEYS=Object.keys(WEAPONS);
+const WEAPON_KEYS=Object.keys(WEAPONS).filter(k=>!WEAPONS[k].legendary); // las legendarias se ganan en la arena
 function randomWeaponKey(){ return WEAPON_KEYS[Math.floor(Math.random()*WEAPON_KEYS.length)]; }
 function weaponOf(f){ return f.weapon || WEAPONS.fists; }
 
@@ -411,6 +416,14 @@ function buildWeaponMesh(key){
     const body=new THREE.Mesh(new THREE.BoxGeometry(.2,.3,.34),dark); body.position.y=.28; g.add(body);
     const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.058,.068,.5,10),steel); barrel.position.y=.6; g.add(barrel);
     const cell=new THREE.Mesh(new THREE.SphereGeometry(.09,10,10),glow); cell.position.y=.3; g.add(cell);
+  } else if(key==='fuego'){
+    const blade=new THREE.Mesh(new THREE.CylinderGeometry(.06,.075,1.0,10), new THREE.MeshStandardMaterial({color:0xff6600, emissive:0xff4500, emissiveIntensity:3})); blade.position.y=.75; g.add(blade);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(.095,.28,10), new THREE.MeshStandardMaterial({color:0xfacc15, emissive:0xff9500, emissiveIntensity:3.4})); tip.position.y=1.36; g.add(tip);
+    const guard=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.05,12),steel); guard.position.y=.23; g.add(guard);
+  } else if(key==='mjolnir'){
+    const handle=new THREE.Mesh(new THREE.CylinderGeometry(.05,.055,.9,8),dark); handle.position.y=.45; g.add(handle);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(.4,.34,.34), new THREE.MeshStandardMaterial({color:0xfacc15, emissive:0xffcc00, emissiveIntensity:2.6})); head.position.y=.98; g.add(head);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(.12,8,8),steel); cap.position.y=1.18; g.add(cap);
   }
   return g;
 }
@@ -443,6 +456,136 @@ function spawnPlasma(f,type){
   m.userData={v:dir.multiplyScalar(14), dmg:type==='special'?26:(type==='kick'?17:12), owner:f, life:2.5};
   scene.add(m); projectiles.push(m);
   burst(f.pos.x+dir.x*.8,1.4,f.pos.z+dir.z*.8,0x22d3ee);
+}
+
+// ── Sonidos (Web Audio API, sin archivos externos) ────────────────────────
+let audioCtx=null;
+function sfx(kind){
+  try{
+    audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const t=audioCtx.currentTime;
+    const gain=audioCtx.createGain(); gain.connect(audioCtx.destination);
+    const noise=(dur,freq,type,vol)=>{
+      const b=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*dur),audioCtx.sampleRate);
+      const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+      const s=audioCtx.createBufferSource(); s.buffer=b;
+      const f=audioCtx.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq; f.Q.value=1;
+      const g2=audioCtx.createGain(); g2.gain.setValueAtTime(vol||.3,t); g2.gain.exponentialRampToValueAtTime(.001,t+dur);
+      s.connect(f); f.connect(g2); g2.connect(audioCtx.destination); s.start(t); s.stop(t+dur+.02);
+    };
+    const tone=(type,f0,f1,dur,vol)=>{
+      const o=audioCtx.createOscillator(); o.type=type; o.frequency.setValueAtTime(f0,t);
+      if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+      o.connect(gain); gain.gain.setValueAtTime(vol||.25,t); gain.gain.exponentialRampToValueAtTime(.001,t+dur);
+      o.start(t); o.stop(t+dur+.02);
+    };
+    switch(kind){
+      case 'punch': tone('sine',150,70,.12,.3); noise(.06,900,'lowpass',.22); break;
+      case 'kick': tone('sine',110,55,.16,.35); noise(.07,600,'lowpass',.28); break;
+      case 'sword': tone('square',720,180,.17,.22); noise(.17,2400,'highpass',.18); break;
+      case 'hammer': tone('sine',95,42,.34,.45); noise(.15,520,'lowpass',.3); break;
+      case 'nunchaku': tone('triangle',1500,1100,.06,.25); setTimeout(()=>sfx('punch'),70); break;
+      case 'spear': noise(.12,1800,'bandpass',.22); tone('triangle',900,600,.1,.18); break;
+      case 'plasma': tone('sawtooth',880,240,.2,.3); noise(.09,1500,'highpass',.14); break;
+      case 'block': tone('triangle',1250,1250,.1,.22); break;
+      case 'special': tone('sawtooth',180,760,.4,.3); break;
+      case 'combo': tone('square',600,880,.09,.18); break;
+      case 'legendary': [523,659,784,1047].forEach((n,i)=>setTimeout(()=>{
+        try{
+          const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+          o.type='square'; o.frequency.value=n; o.connect(g); g.connect(audioCtx.destination);
+          const tt=audioCtx.currentTime; g.gain.setValueAtTime(.2,tt); g.gain.exponentialRampToValueAtTime(.001,tt+.16);
+          o.start(tt); o.stop(tt+.18);
+        }catch(e){}
+      }, i*90)); break;
+    }
+  }catch(e){ /* sin audio */ }
+}
+
+// ── Combo ────────────────────────────────────────────────────────────────
+p1.combo=0; p2.combo=0; p1.comboTimer=0; p2.comboTimer=0;
+p1.legendaryUntil=0; p2.legendaryUntil=0; p1.prevWeapon=null; p2.prevWeapon=null;
+function comboBonus(f){ return (f.combo||0)>=3 ? 1.35 : 1; }
+function registerHit(f, dealt){
+  if(dealt>0){
+    f.combo=(f.combo||0)+1; f.comboTimer=2.2;
+    if(f.combo>=3){ showToast('¡COMBO x'+f.combo+'! 🔥 daño +35%'); sfx('combo'); }
+  } else { f.combo=0; }
+}
+function decayCombo(dt){
+  for(const f of [p1,p2]){
+    if(f.comboTimer>0){ f.comboTimer-=dt; if(f.comboTimer<=0) f.combo=0; }
+  }
+}
+
+// ── Armas legendarias que caen en la arena ────────────────────────────────
+const LEGENDARIES=[
+  {weapon:'fuego', label:'🐉 Espada de Fuego', color:0xff6600},
+  {weapon:'mjolnir', label:'⚡ Mjölnir', color:0xfacc15}
+];
+let legendaryState=null, legendaryClock=9;
+const legendaryPickupR=1.35;
+function spawnLegendary(){
+  if(legendaryState) return;
+  const t=LEGENDARIES[Math.floor(Math.random()*LEGENDARIES.length)];
+  const g=new THREE.Group();
+  const blade=new THREE.Mesh(new THREE.ConeGeometry(.2,1.7,6), new THREE.MeshStandardMaterial({color:t.color, emissive:t.color, emissiveIntensity:2.6}));
+  blade.position.y=1.7; blade.rotation.x=Math.PI; g.add(blade);
+  const hilt=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.5,8), new THREE.MeshStandardMaterial({color:0xcbd5e1, metalness:.9, roughness:.2}));
+  hilt.position.y=1.05; g.add(hilt);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.28,1.1,10,8,1,true), new THREE.MeshBasicMaterial({color:t.color, transparent:true, opacity:.3, side:THREE.DoubleSide}));
+  beam.position.y=5.1; g.add(beam);
+  const light=new THREE.PointLight(t.color, 12, 7); light.position.y=1.6; g.add(light);
+  // aparece algo alejada del centro pero dentro del encuadre de cámara
+  if(new URLSearchParams(location.search).get('legendarydemo')){ g.position.set(2.3,0,1.2); }
+  else { const a=Math.random()*Math.PI*2; g.position.set(Math.cos(a)*3.2, 0, Math.sin(a)*3.2); }
+  scene.add(g);
+  legendaryState={mesh:g, t, age:0};
+  showToast('¡ARMA LEGENDARIA está en la arena! 🐉');
+}
+function pickLegendary(f){
+  const t=legendaryState.t;
+  scene.remove(legendaryState.mesh);
+  legendaryState=null;
+  legendaryClock=26;
+  f.prevWeapon=f.weapon||WEAPONS.fists;
+  f.weapon=WEAPONS[t.weapon];
+  f.legendaryUntil=22;
+  attachWeapon(f);
+  showToast('¡'+t.label+'! 🔥 daño legendario');
+  sfx('legendary');
+}
+function updateLegendary(dt){
+  legendaryClock-=dt;
+  if(legendaryClock<=0){ legendaryClock=24; spawnLegendary(); }
+  if(!legendaryState) return;
+  const m=legendaryState.mesh;
+  legendaryState.age+=dt;
+  m.rotation.y+=dt*1.6;
+  m.position.y=Math.sin(performance.now()*.0022)*.15;
+  if(legendaryState.age>1.5){ // período de gracia: todos la ven antes de que alguien la tome
+    for(const f of [p1,p2]){
+      if(Math.hypot(f.pos.x-m.position.x, f.pos.z-m.position.z)<legendaryPickupR){ pickLegendary(f); break; }
+    }
+  }
+}
+function revertLegendary(f){
+  if(f.legendaryUntil>0 || f.prevWeapon){
+    f.weapon=f.prevWeapon||WEAPONS.fists; f.prevWeapon=null; f.legendaryUntil=0;
+    attachWeapon(f);
+  }
+}
+function updateLegendaryTimers(dt){
+  for(const f of [p1,p2]){
+    if(f.legendaryUntil>0){
+      f.legendaryUntil-=dt;
+      if(f.legendaryUntil<=0){
+        f.weapon=f.prevWeapon||WEAPONS.fists; f.prevWeapon=null; attachWeapon(f);
+        showToast('El arma legendaria se desvanece...');
+      }
+    }
+  }
 }
 
 document.getElementById('charSel').onchange=e=>{
@@ -520,7 +663,7 @@ document.getElementById('personaSel').onchange=e=>{
   showToast(cfg.label+' · '+cfg.desc);
   p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
 };
-document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);roundOver=false;document.getElementById('banner').style.display='none';showToast('VOLT eligió '+p2.weapon.label+' 🎲');};
+document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;roundOver=false;document.getElementById('banner').style.display='none';showToast('VOLT eligió '+p2.weapon.label+' 🎲');};
 
 function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-f.pos.z); f.mesh.rotation.y=f.facing; }
 function dist(a,b){ return a.pos.distanceTo(b.pos); }
@@ -544,7 +687,7 @@ function tryAttack(f,type){
   }
   // Arma a distancia: dispara un proyectil de plasma
   if(w.kind==='ranged'){
-    setTimeout(()=>{ if(!roundOver) spawnPlasma(f,type); },120);
+    setTimeout(()=>{ if(!roundOver){ spawnPlasma(f,type); sfx(type==='special'?'special':'plasma'); } },120);
     return;
   }
   setTimeout(()=>{
@@ -552,8 +695,14 @@ function tryAttack(f,type){
     if(dist(f,target)<w.range){
       let dmg = type==='special'?22:(type==='kick'?14:9);
       if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
-      dmg=Math.round(dmg*w.dmg);
-      target.hit(dmg,f);
+      dmg=Math.round(dmg*w.dmg*comboBonus(f));
+      const dealt=target.hit(dmg,f);
+      registerHit(f,dealt);
+      if(dealt>0){
+        if(type==='special') sfx('special');
+        else if(type==='kick') sfx('kick');
+        else sfx(w.key==='fists'?'punch':w.key);
+      }
       if(type==='special') burst(target.pos.x,1.4,target.pos.z,0xa78bfa);
       // Tramposa: a veces esquiva por completo el primer golpe
       if(f===p1 && p2.persona==='tramposa' && Math.random()<0.18){
@@ -672,7 +821,7 @@ function endRound(winner){
   document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
   const b=document.getElementById('banner'); b.textContent=(winner===p1?`🏆 ¡${p1.name} GANA!`:'🤖 ¡VOLT ROJO GANA!'); b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
-  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);roundOver=false;b.style.display='none';timeLeft=99;showToast('VOLT eligió '+p2.weapon.label+' 🎲');},2600);
+  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;roundOver=false;b.style.display='none';timeLeft=99;showToast('VOLT eligió '+p2.weapon.label+' 🎲');},2600);
 }
 setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
   if(timeLeft<=0){ endRound(p1.hp>=p2.hp?p1:p2); } } },1000);
@@ -725,6 +874,13 @@ function loop(){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,clock.getDelta());
   for(const mx of mixers) mx.update(dt);   // animaciones glTF (Blender / Tripo AI)
+  decayCombo(dt);
+  updateLegendary(dt);
+  updateLegendaryTimers(dt);
+  const comboEl=document.getElementById('combo');
+  if(p1.combo>=2) comboEl.textContent='🔥 x'+p1.combo;
+  else if(autoMode && p2.combo>=2) comboEl.textContent='🔥 VOLT x'+p2.combo;
+  else comboEl.textContent='';
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.userData.life-=dt*1.4; p.position.addScaledVector(p.userData.v,dt); p.userData.v.y-=6*dt;
@@ -739,8 +895,10 @@ function loop(){
     const target = pr.userData.owner===p1 ? p2 : p1;
     if(pr.position.distanceTo(target.pos.clone().setY(1.3))<1.05){
       const w=weaponOf(pr.userData.owner);
-      let dmg=Math.round(pr.userData.dmg*w.dmg);
-      target.hit(dmg,pr.userData.owner);
+      let dmg=Math.round(pr.userData.dmg*w.dmg*comboBonus(pr.userData.owner));
+      const dealt=target.hit(dmg,pr.userData.owner);
+      registerHit(pr.userData.owner,dealt);
+      sfx('plasma');
       burst(pr.position.x,1.4,pr.position.z,0x22d3ee);
       scene.remove(pr); projectiles.splice(i,1);
       if(target.hp<=0) endRound(pr.userData.owner);
