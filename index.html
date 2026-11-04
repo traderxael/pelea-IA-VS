@@ -506,11 +506,11 @@ function sfx(kind){
 // ── Combo ────────────────────────────────────────────────────────────────
 p1.combo=0; p2.combo=0; p1.comboTimer=0; p2.comboTimer=0;
 p1.legendaryUntil=0; p2.legendaryUntil=0; p1.prevWeapon=null; p2.prevWeapon=null;
-function comboBonus(f){ return (f.combo||0)>=3 ? 1.35 : 1; }
+function comboBonus(f){ return (f.combo||0)>=3 ? (f===p2 ? 1.15 : 1.35) : 1; }
 function registerHit(f, dealt){
   if(dealt>0){
     f.combo=(f.combo||0)+1; f.comboTimer=2.2;
-    if(f.combo>=3){ showToast('¡COMBO x'+f.combo+'! 🔥 daño +35%'); sfx('combo'); }
+    if(f.combo>=3){ showToast('¡COMBO x'+f.combo+'! '+(f===p2?'(IA +15%)':'🔥 daño +35%')); sfx('combo'); }
   } else { f.combo=0; }
 }
 function decayCombo(dt){

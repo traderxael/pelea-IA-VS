@@ -27,7 +27,8 @@ Barras de vida y energía, daño flotante, partículas, cámara que sigue la acc
 Cambia de arma con un toque en la barra de armas.
 
 ## Combos
-- Acierta 3+ golpes seguidos sin recibir daño y tu daño sube **+35%** (¡aparece el contador 🔥 xN!)
+- **Tú:** 3+ golpes seguidos sin recibir daño → daño **+35%** (🔥 aparece el contador xN)
+- **VOLT ROJO (IA):** el mismo sistema pero con bonus limitado a **+15%**, para que puedas ganarle
 - El contador aparece a la izquierda si la IA lo logra (en modo AUTO)
 
 ## Armas legendarias
