@@ -1,0 +1,209 @@
+import bpy, math
+from mathutils import Vector, Matrix
+
+def clear_scene():
+    bpy.ops.object.select_all(action='SELECT')
+    bpy.ops.object.delete(use_global=False)
+    for block in (bpy.data.meshes, bpy.data.armatures, bpy.data.actions, bpy.data.materials, bpy.data.collections):
+        for x in list(block):
+            try: block.remove(x)
+            except Exception: pass
+
+def make_mat(name, color, metallic=0.0, roughness=0.5, emissive=None, strength=3.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes['Principled BSDF']
+    bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    bsdf.inputs['Metallic'].default_value = metallic
+    bsdf.inputs['Roughness'].default_value = roughness
+    if emissive is not None:
+        bsdf.inputs['Emission Color'].default_value = (*emissive, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = strength
+    return m
+
+ARM_DATA = 'Armature'
+arm_obj = None
+
+def build_armature():
+    global arm_obj
+    data = bpy.data.armatures.new(ARM_DATA)
+    arm_obj = bpy.data.objects.new(ARM_DATA, data)
+    bpy.context.scene.collection.objects.link(arm_obj)
+    bpy.context.view_layer.objects.active = arm_obj
+    bpy.ops.object.mode_set(mode='EDIT')
+    ebones = data.edit_bones
+    defs = [
+        ('Root',        (0,0,0.15), (0,0,0.55), None),
+        ('Spine',       (0,0,0.55), (0,0,1.05), 'Root'),
+        ('Chest',       (0,0,1.05), (0,0,1.62), 'Spine'),
+        ('Head',        (0,0,1.62), (0,0,2.15), 'Chest'),
+        ('L_UpperArm',  (-0.22,0,1.5), (-0.9,0,1.1), 'Chest'),
+        ('L_ForeArm',   (-0.9,0,1.1), (-1.3,0,0.78), 'L_UpperArm'),
+        ('R_UpperArm',  (0.22,0,1.5), (0.9,0,1.1), 'Chest'),
+        ('R_ForeArm',   (0.9,0,1.1), (1.3,0,0.78), 'R_UpperArm'),
+        ('L_Thigh',     (-0.3,0,0.85), (-0.38,0,0.4), 'Root'),
+        ('L_Shin',      (-0.38,0,0.4), (-0.4,0,0.02), 'L_Thigh'),
+        ('R_Thigh',     (0.3,0,0.85), (0.38,0,0.4), 'Root'),
+        ('R_Shin',      (0.38,0,0.4), (0.4,0,0.02), 'R_Thigh'),
+    ]
+    for name, head, tail, parent in defs:
+        b = ebones.new(name)
+        b.head, b.tail = head, tail
+        if parent: b.parent = ebones[parent]
+    bpy.ops.object.mode_set(mode='OBJECT')
+    arm_obj.show_in_front = True
+
+def assign(obj, bone):
+    vg = obj.vertex_groups.new(name=bone)
+    vg.add(range(len(obj.data.vertices)), 1.0, 'REPLACE')
+    mod = obj.modifiers.new('Armature', 'ARMATURE')
+    mod.object = arm_obj
+    obj.parent = arm_obj
+
+def cyl_between(bone, p1, p2, radius, mat, name):
+    p1, p2 = Vector(p1), Vector(p2)
+    d = p2 - p1
+    length = d.length
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=length, location=(p1+p2)/2, vertices=16)
+    o = bpy.context.active_object
+    o.name = name
+    o.rotation_mode = 'QUATERNION'
+    o.rotation_quaternion = d.to_track_quat('Z', 'Y')
+    o.data.materials.append(mat)
+    assign(o, bone)
+    return o
+
+def sphere(bone, loc, radius, mat, name, squash=None):
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=radius, location=loc, subdivisions=2)
+    o = bpy.context.active_object
+    o.name = name
+    if squash: o.scale = squash
+    o.data.materials.append(mat)
+    assign(o, bone)
+    return o
+
+def box(bone, loc, size, mat, name):
+    bpy.ops.mesh.primitive_cube_add(location=loc, size=1.0)
+    o = bpy.context.active_object
+    o.name = name
+    o.scale = size
+    o.data.materials.append(mat)
+    assign(o, bone)
+    return o
+
+def build_robot(body_color, body_metal, emissive_color, name):
+    clear_scene()
+    build_armature()
+    mat_body = make_mat(name+'_body', body_color, metallic=body_metal, roughness=0.25)
+    mat_dark = make_mat(name+'_dark', (0.06,0.08,0.12), metallic=0.6, roughness=0.45)
+    mat_steel = make_mat(name+'_steel', (0.58,0.63,0.71), metallic=0.95, roughness=0.18)
+    mat_glow = make_mat(name+'_glow', emissive_color, metallic=0.0, roughness=0.4, emissive=emissive_color, strength=4.0)
+
+    # Torso: capsule (cilindro + esferas) + cinturón + núcleo
+    cyl_between('Spine', (0,0,0.55), (0,0,1.05), 0.44, mat_body, name+'_pelvis')
+    cyl_between('Chest', (0,0,1.05), (0,0,1.6), 0.5, mat_body, name+'_chest')
+    sphere('Chest', (0,0,1.05), 0.5, mat_body, name+'_chestBot')
+    sphere('Chest', (0,0,1.6), 0.52, mat_body, name+'_chestTop')
+    cyl_between('Chest', (0,0,0.92), (0,0,1.02), 0.52, mat_dark, name+'_belt')
+    sphere('Chest', (0,0.42,1.42), 0.15, mat_glow, name+'_core')
+    # Cabeza
+    sphere('Head', (0,0,1.88), 0.34, mat_body, name+'_HEAD')
+    box('Head', (0,0.3,1.9), (0.4,0.12,0.12), mat_glow, name+'_visor')
+    cyl_between('Head', (0.2,0,2.18), (0.2,0,2.55), 0.02, mat_steel, name+'_ant')
+    sphere('Head', (0.2,0,2.56), 0.05, mat_glow, name+'_antTip')
+    # Hombreras
+    sphere('L_UpperArm', (-0.32,0,1.52), 0.22, mat_steel, name+'_shL')
+    sphere('R_UpperArm', (0.32,0,1.52), 0.22, mat_steel, name+'_shR')
+    # Brazos
+    cyl_between('L_UpperArm', (-0.3,0,1.48), (-0.9,0,1.1), 0.15, mat_body, name+'_bicepsL')
+    sphere('L_UpperArm', (-0.9,0,1.1), 0.13, mat_steel, name+'_elbowL')
+    cyl_between('L_ForeArm', (-0.9,0,1.1), (-1.28,0,0.8), 0.13, mat_body, name+'_foreL')
+    sphere('L_ForeArm', (-1.34,0,0.75), 0.18, mat_dark, name+'_fistL')
+    cyl_between('R_UpperArm', (0.3,0,1.48), (0.9,0,1.1), 0.15, mat_body, name+'_bicepsR')
+    sphere('R_UpperArm', (0.9,0,1.1), 0.13, mat_steel, name+'_elbowR')
+    cyl_between('R_ForeArm', (0.9,0,1.1), (1.28,0,0.8), 0.13, mat_body, name+'_foreR')
+    sphere('R_ForeArm', (1.34,0,0.75), 0.18, mat_dark, name+'_fistR')
+    # Piernas
+    cyl_between('L_Thigh', (-0.3,0,0.82), (-0.38,0,0.42), 0.17, mat_dark, name+'_thighL')
+    sphere('L_Thigh', (-0.38,0,0.4), 0.14, mat_steel, name+'_kneeL')
+    cyl_between('L_Shin', (-0.38,0,0.4), (-0.4,0,0.05), 0.15, mat_dark, name+'_shinL')
+    sphere('L_Shin', (-0.4,0.08,0.03), 0.19, mat_body, name+'_footL', squash=(1,1.4,0.55))
+    cyl_between('R_Thigh', (0.3,0,0.82), (0.38,0,0.42), 0.17, mat_dark, name+'_thighR')
+    sphere('R_Thigh', (0.38,0,0.4), 0.14, mat_steel, name+'_kneeR')
+    cyl_between('R_Shin', (0.38,0,0.4), (0.4,0,0.05), 0.15, mat_dark, name+'_shinR')
+    sphere('R_Shin', (0.4,0.08,0.03), 0.19, mat_body, name+'_footR', squash=(1,1.4,0.55))
+    # Tanque de propelente
+    cyl_between('Chest', (0,-0.42,1.25), (0,-0.42,1.72), 0.18, mat_steel, name+'_tank')
+
+def key_rot(pbones, bone, frame, euler):
+    b = pbones[bone]
+    b.rotation_mode = 'XYZ'
+    b.rotation_euler = euler
+    b.keyframe_insert('rotation_euler', frame=frame)
+
+def key_loc(pbones, bone, frame, loc):
+    b = pbones[bone]
+    b.location = loc
+    b.keyframe_insert('location', frame=frame)
+
+def make_actions():
+    sc = bpy.context.scene
+    sc.frame_start, sc.frame_end = 1, 75
+    arm_obj.animation_data_create()
+    pbones = arm_obj.pose.bones
+
+    idle = bpy.data.actions.new('Idle')
+    arm_obj.animation_data.action = idle
+    for frame, spine, chest, hips in [(1, (0,0,0), (0,0,0), 0.0), (20, (0.06,0,0), (-0.04,0,0), 0.05), (40, (0,0,0), (0,0,0), 0.0)]:
+        sc.frame_set(frame)
+        key_rot(pbones, 'Spine', frame, (spine[0], 0, 0))
+        key_rot(pbones, 'Chest', frame, (chest[0], 0, 0))
+        key_loc(pbones, 'Root', frame, (0, 0, hips))
+        key_rot(pbones, 'R_UpperArm', frame, (0, 0, 0.35 + spine[0]*2))
+        key_rot(pbones, 'L_UpperArm', frame, (0, 0, -0.35 - spine[0]*2))
+
+    attack = bpy.data.actions.new('Attack')
+    arm_obj.animation_data.action = attack
+    # windup (1-20), strike (45), recover (75)
+    seq = [
+        (1,  (0,0,0),   (0,0,0),  0.35, 0),
+        (20, (0.25,0,0.15), (-0.2,0,-0.5), 0.9, -0.4),
+        (45, (-0.35,0,-0.1), (0.35,0,0.7), -1.3, 1.0),
+        (60, (-0.1,0,0), (0.1,0,0.25), 0.15, 0.2),
+        (75, (0,0,0),   (0,0,0),  0.35, 0),
+    ]
+    for frame, spine, chest, armz, bend in seq:
+        sc.frame_set(frame)
+        key_rot(pbones, 'Spine', frame, spine)
+        key_rot(pbones, 'Chest', frame, chest)
+        key_rot(pbones, 'R_UpperArm', frame, (0, 0, armz))
+        key_rot(pbones, 'R_ForeArm', frame, (0, math.radians(-70)*bend if False else 0, bend*0.9))
+        key_loc(pbones, 'Root', frame, (0.15*bend, 0, 0.05*bend))
+    arm_obj.animation_data.action = None
+
+    # Push both actions to NLA tracks for export as separate clips
+    ad = arm_obj.animation_data
+    for act in (idle, attack):
+        track = ad.nla_tracks.new()
+        track.name = act.name
+        strip = track.strips.new(act.name, 1, act)
+        strip.action_frame_end = act.frame_range[1]
+
+def export_glb(path):
+    sc = bpy.context.scene
+    sc.frame_set(1)
+    bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', export_animations=True, export_skins=True)
+
+def main():
+    out = 'C:/c/Users/USUARIO/ai-robot-fight/assets/models'
+    # TITÁN AZUL (robot)
+    build_robot((0.15,0.39,0.92), 0.75, (0.22,0.74,0.97), 'titan')
+    make_actions()
+    export_glb(out + '/titan.glb')
+    # VOLT ROJO (robot enemigo)
+    build_robot((0.86,0.15,0.15), 0.75, (1.0,0.42,0.0), 'volt')
+    make_actions()
+    export_glb(out + '/volt.glb')
+    print('DONE glTF export')
+
+main()
