@@ -300,10 +300,11 @@ function gltfFindNode(mesh, ...names){
 function applyGltf(mesh){
   mesh.traverse(o=>{ if(o.isMesh){ o.castShadow=true; if(o.material) o.material.needsUpdate=true; } });
   const find=gltfFindNode.bind(null, mesh);
-  mesh.userData.armL=find('arm_l','arml','leftarm','upperarmleft','upper_arm_l')||new THREE.Group();
-  mesh.userData.armR=find('arm_r','armr','rightarm','upperarmright','upper_arm_r')||new THREE.Group();
-  mesh.userData.legL=find('leg_l','legl','leftleg','thighleft','thigh_l')||new THREE.Group();
-  mesh.userData.legR=find('leg_r','legr','rightleg','thighright','thigh_r')||new THREE.Group();
+  mesh.userData.isGltf=true;
+  mesh.userData.armL=find('arm_l','arml','leftarm','upperarmleft','upper_arm_l','l_upperarm','l_forearm')||new THREE.Group();
+  mesh.userData.armR=find('arm_r','armr','rightarm','upperarmright','upper_arm_r','r_upperarm','r_forearm')||new THREE.Group();
+  mesh.userData.legL=find('leg_l','legl','leftleg','thighleft','thigh_l','l_thigh','l_shin')||new THREE.Group();
+  mesh.userData.legR=find('leg_r','legr','rightleg','thighright','thigh_r','r_thigh','r_shin')||new THREE.Group();
   mesh.userData.head=find('head','helmet','visor')||new THREE.Group();
   mesh.userData.torso=mesh;
   return mesh;
@@ -319,12 +320,14 @@ function preloadGltf(path, kind){
       mesh.userData.mixer=mixer; mesh.userData.attackClip=attack||null; mesh.userData.idleClip=idle||null; mesh.userData.clips=gltf.animations;
       mixers.push(mixer);
       gltfPreloaded[kind]=mesh;
+      if(typeof trySwap==='function') trySwap(kind);   // el modelo llegó → reemplazar en juego
       resolve(true);
     }, undefined, ()=>resolve(false)); // sin archivo → respaldo procedural
   });
 }
 preloadGltf('assets/models/titan.glb','robot');
 preloadGltf('assets/models/soldier.glb','soldier');
+preloadGltf('assets/models/volt.glb','volt');
 
 const p1mesh=makeRobot(0x2563eb,0x38bdf8); scene.add(p1mesh);
 const p2mesh=makeRobot(0xdc2626,0xff6600); scene.add(p2mesh);
@@ -356,6 +359,20 @@ document.getElementById('charSel').onchange=e=>{
   swapP1(e.target.value);
   showToast(e.target.value==='soldier'?'🪖 SOLDADO: rápido (+18% vel), vida 85':'🤖 TITÁN: vida 100, vel normal');
 };
+function swapP2(){
+  const pos=p2.pos.clone();
+  scene.remove(p2.mesh);
+  const mesh=gltfPreloaded.volt;
+  mesh.position.copy(pos); mesh.position.y=.3;
+  scene.add(mesh);
+  p2.mesh=mesh; p2.pos=mesh.position;
+}
+function trySwap(kind){
+  // Cuando un .glb termina de cargar, lo usa si aplica al luchador actual
+  const sel=(document.getElementById('charSel')||{value:'robot'}).value;
+  if(kind==='volt'){ swapP2(); }
+  else if(kind===sel){ swapP1(kind); }
+}
 p1.maxHp=100; p2.maxHp=100; p1.speedMul=1; p2.speedMul=1;
 
 const particles=[];
@@ -582,19 +599,23 @@ function playerUpdate(dt){
   p1.pos.addScaledVector(fwd,mz*3.6*p1.speedMul*dt).addScaledVector(right,mx*3.6*p1.speedMul*dt);
   clampArena(p1);
   p1.energy=Math.min(100,p1.energy+dt*3);
-  // animación brazos
+  // animación brazos (solo para modelos procedurales — los glTF usan sus clips)
   const u=p1.mesh.userData;
-  if(p1.state==='attack'&&p1.timer>0){ u.armR.rotation.x=-1.6; if(p1.attackType==='kick') u.legR.rotation.x=-1.2; }
-  else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
-  if(p1.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
+  if(!u.isGltf){
+    if(p1.state==='attack'&&p1.timer>0){ u.armR.rotation.x=-1.6; if(p1.attackType==='kick') u.legR.rotation.x=-1.2; }
+    else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
+    if(p1.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
+  }
 }
 
 function aiAnim(dt){
   p2.timer-=dt; p2.cooldown-=dt; if(p2.hurt>0)p2.hurt-=dt;
   const u=p2.mesh.userData;
-  if(p2.state==='attack'&&p2.timer>0){ u.armR.rotation.x=-1.6; if(p2.attackType==='kick') u.legR.rotation.x=-1.2; }
-  else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
-  if(p2.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
+  if(!u.isGltf){
+    if(p2.state==='attack'&&p2.timer>0){ u.armR.rotation.x=-1.6; if(p2.attackType==='kick') u.legR.rotation.x=-1.2; }
+    else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
+    if(p2.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
+  }
   p2.mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
   p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
 }
