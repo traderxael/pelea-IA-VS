@@ -30,8 +30,9 @@
   .b1{width:70px;height:70px;background:#2563eb;font-size:22px}
   .b2{width:70px;height:70px;background:#dc2626;font-size:22px}
   .b3{width:70px;height:70px;background:#7c3aed;font-size:18px;grid-column:span 2;width:100%}
-  .topbtns{position:fixed;top:96px;left:10px;display:flex;gap:8px;z-index:7}
-  .topbtns button{border-radius:99px;padding:10px 14px;background:#1e293b;border:1px solid #fff3;font-size:13px;box-shadow:none}
+  .topbtns{position:fixed;top:96px;left:10px;display:flex;gap:8px;z-index:7;flex-wrap:wrap;max-width:100vw}
+  .topbtns button, .topbtns select{border-radius:99px;padding:10px 14px;background:#1e293b;border:1px solid #fff3;font-size:13px;color:#fff;box-shadow:none;outline:none}
+  .topbtns select{background:#0f172a}
   #hint{text-align:center;font-size:12px;opacity:.85;margin-top:4px}
   @media(min-width:800px){.controls{height:150px}}
 </style>
@@ -52,7 +53,7 @@
     <div id="wins" class="tag">0 - 0</div>
   </div>
   <div class="card" style="text-align:right">
-    <div class="name">🔴 VOLT ROJO <span class="tag">IA ADAPTATIVA</span></div>
+    <div class="name">🔴 VOLT ROJO <span class="tag" id="personaTag">🧠 ADAPTATIVA</span></div>
     <div class="bar"><div id="hp2" class="fill hp"></div></div>
     <div class="bar enbar"><div id="en2" class="fill en"></div></div>
     <div id="hint">Bloqueo: <span id="blockStat">0%</span> · Contra: <span id="counterStat">0</span></div>
@@ -61,6 +62,16 @@
 
 <div class="topbtns">
   <button id="autoBtn">🤖 AUTO: ON</button>
+  <select id="personaSel" title="Personalidad de VOLT ROJO">
+    <option value="adaptativa">🧠 Adaptativa</option>
+    <option value="agresiva">🔥 Agresiva</option>
+    <option value="defensiva">🛡️ Defensiva</option>
+    <option value="tramposa">🎲 Tramposa</option>
+    <option value="grok">🤪 Grok</option>
+    <option value="chatgpt">💬 ChatGPT</option>
+    <option value="claude">🧭 Claude</option>
+    <option value="deepseek">🔍 DeepSeek</option>
+  </select>
   <button id="resetBtn">↻ Reiniciar</button>
 </div>
 
@@ -146,7 +157,20 @@ class Fighter{
     this.blocking=false; this.attackType=null;
     // Adaptativa
     this.memory={closeAttacks:0, farAttacks:0, blocks:0, counters:0, hitsTaken:0, lastOppMove:0, aggression:.45, defense:.35, danger:0};
+    // Personalidad de IA rival (seleccionable)
+    this.persona='adaptativa';
+    this.personaCfg={
+      adaptativa:{ label:'🧠 ADAPTATIVA', aggr:.4, def:.35, speed:3.6, dmgBonus:1.0, desc:'Aprende de tu patrón' },
+      agresiva:  { label:'🔥 AGRESIVA',   aggr:.92, def:.12, speed:4.6, dmgBonus:1.25, desc:'Ataca sin parar' },
+      defensiva: { label:'🛡️ DEFENSIVA', aggr:.22, def:.92, speed:2.9, dmgBonus:0.9,  desc:'Bloquea y contraataca' },
+      tramposa:  { label:'🎲 TRAMPOSA',   aggr:.6,  def:.5,  speed:3.8, dmgBonus:1.1,  desc:'Esquiva y te engaña' },
+      grok:      { label:'🤪 GROK',       aggr:.86, def:.18, speed:4.8, dmgBonus:1.2,  desc:'Caos total, sin patrón' },
+      chatgpt:   { label:'💬 CHATGPT',    aggr:.55, def:.55, speed:3.4, dmgBonus:1.05, desc:'Estratégico, analiza y responde' },
+      claude:    { label:'🧭 CLAUDE',     aggr:.34, def:.82, speed:3.1, dmgBonus:0.95, desc:'Paciente, calcula tu error' },
+      deepseek:  { label:'🔍 DEEPSEEK',   aggr:.5,  def:.6,  speed:3.5, dmgBonus:1.0,  desc:'Busca tu debilidad' }
+    };
   }
+  cfg(){ return this.personaCfg[this.persona] || this.personaCfg.adaptativa; }
   reset(x,z){ this.hp=100; this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; }
   hit(dmg, attacker){
     if(this.blocking && Math.random()<.75){ 
@@ -213,6 +237,13 @@ bindBtn('kick',()=>tryAttack(p1,'kick')) ;
 bindBtn('special',()=>tryAttack(p1,'special'));
 
 document.getElementById('autoBtn').onclick=e=>{autoMode=!autoMode; e.target.textContent=autoMode?'🤖 AUTO: ON':'🎮 MANUAL';};
+document.getElementById('personaSel').onchange=e=>{
+  p2.persona=e.target.value;
+  const cfg=p2.cfg();
+  document.getElementById('personaTag').textContent=cfg.label;
+  showToast(cfg.label+' · '+cfg.desc);
+  p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
+};
 document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);roundOver=false;document.getElementById('banner').style.display='none';};
 
 function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-f.pos.z); f.mesh.rotation.y=f.facing; }
@@ -234,19 +265,54 @@ function tryAttack(f,type){
     if(roundOver) return;
     if(dist(f,target)<3.4){
       let dmg = type==='special'?22:(type==='kick'?14:9);
-      if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4));
+      if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
       target.hit(dmg,f);
       if(type==='special') burst(target.pos.x,1.4,target.pos.z,0xa78bfa);
+      // Tramposa: a veces esquiva por completo el primer golpe
+      if(f===p1 && p2.persona==='tramposa' && Math.random()<0.18){
+        p2.pos.x += (Math.random()<.5?-1.2:1.2); clampArena(p2);
+        showToast('¡VOLT te esquivó! 🎲');
+      }
+      // Grok también esquiva a veces, pero por caos
+      if(f===p1 && p2.persona==='grok' && Math.random()<0.12){
+        p2.pos.x += (Math.random()<.5?-1:1); clampArena(p2);
+        showToast('¡Grok se movió por caos! 🤪');
+      }
       if(target.hp<=0) endRound(f);
     }
   },140);
 }
 
 function adaptiveBrain(dt){
-  // La IA aprende: si el jugador ataca mucho de cerca → sube defensa; si se aleja → persigue más
+  // La IA aprende según su personalidad: si el jugador ataca mucho de cerca → sube defensa; si se aleja → persigue más
   const m=p2.memory;
-  m.defense = Math.min(.9, .3 + m.closeAttacks*.03 + m.blocks*.02);
-  m.aggression = Math.min(.9, .4 + (m.farAttacks> m.closeAttacks? .15:0) + (100-p2.hp)*.002);
+  const cfg=p2.cfg();
+  const learnedDef = Math.min(.9, cfg.def + m.closeAttacks*.03 + m.blocks*.02);
+  const learnedAggr = Math.min(.95, cfg.aggr + (m.farAttacks> m.closeAttacks? .08:0) + (100-p2.hp)*.002);
+  if(p2.persona==='adaptativa'){
+    m.defense=learnedDef; m.aggression=learnedAggr;
+  } else if(p2.persona==='agresiva'){
+    m.defense=.12; m.aggression=.92;
+  } else if(p2.persona==='defensiva'){
+    m.defense=.92; m.aggression=.22;
+  } else if(p2.persona==='tramposa'){
+    // Tramposa alterna entre presionar y huir para engañar, influida por su memoria
+    m.defense=.5; m.aggression=.6 + (Math.random()<.02 ? (Math.random()-.5)*.4 : 0);
+  } else if(p2.persona==='grok'){
+    // Grok: caos total, ignora memoria — hace movimientos impredecibles, ataca aunque esté lejos, a veces se queda quieto
+    m.defense=Math.random()*.5; m.aggression=.86;
+  } else if(p2.persona==='chatgpt'){
+    // ChatGPT: estratégico equilibrado, analiza distancia y usa especial cuando tiene energía
+    m.defense=Math.min(.9, .55 + (m.closeAttacks>6 ? .2 : 0));
+    m.aggression=.55 + (p2.energy>70 ? .25 : 0);
+  } else if(p2.persona==='claude'){
+    // Claude: paciente y defensiva, deja que te canses  (espera y contraataca)
+    m.defense=.82; m.aggression=.34 + (p1.hp < p2.hp ? .15 : 0);
+  } else if(p2.persona==='deepseek'){
+    // DeepSeek: busca debilidad — si atacas mucho de cerca, persigue y usa patada; si huyes, carga especial
+    m.defense=Math.min(.9, .6 + m.closeAttacks*.02);
+    m.aggression=.5 + (m.farAttacks > m.closeAttacks ? .25 : 0);
+  }
   m.danger += (p1.state==='attack'?1:0)*dt;
 
   if(p2.hurt>0||roundOver) return;
@@ -256,21 +322,51 @@ function adaptiveBrain(dt){
   if(p2.state==='attack'&&p2.timer>0) return;
   if(p2.state==='attack') p2.state='idle';
 
-  // Decisión con memoria
+  // Decisión con memoria + personalidad
   const r=Math.random();
-  if(Math.random()<m.defense) { p2.blocking=true; p2.state='block'; p2.timer=.5+.4*m.defense; 
+  const speed=cfg.speed;
+  // Frases según personalidad
+  if(Math.random()<.012){
+    const phrases={
+      grok:['¡JA! 🤪','¿Eso es todo?','¡Mi caos te gana!','Jeee, predecible no soy'],
+      chatgpt:['Analizando... 💬','Estrategia calculada ✔','Respuesta óptima','Calibrando ataque'],
+      claude:['Con calma... 🧭','El truco es la paciencia','Calculé ese golpe','Ahora sí, mi turno'],
+      deepseek:['Buscando patrón... 🔍','Tu debilidad: cerca','Copiando tu estilo','Detectada tu falla'],
+      tramposa:['¿Me viste? 🎲','Truco aprendido','Casi me atrapas']
+    };
+    const arr=phrases[p2.persona] || phrases.tramposa;
+    if(arr) showToast(arr[Math.floor(Math.random()*arr.length)]);
+  }
+  if(p2.persona==='tramposa' && Math.random()<0.10){
+    // Truco: esquiva lateral rápido y luego contraataca
+    moveAI(Math.random()<.5?-2.2:2.2, -1, speed*dt);
+    if(r<m.aggression*.8 && p2.cooldown<=0){ setTimeout(()=>{if(!roundOver){p2.blocking=false; tryAttack(p2,'special');}},180); }
+  }
+  else if(p2.persona==='grok' && Math.random()<0.20){
+    // Grok hace giros locos sin importar la distancia
+    moveAI(Math.random()<.5?-2:2, -1.5, speed*1.2*dt);
+    if(Math.random()<.7 && p2.cooldown<=0){ const a=['punch','kick','special']; tryAttack(p2, a[Math.floor(Math.random()*3)]); }
+  }
+  else if(p2.persona==='claude' && d>3 && Math.random()<0.10){
+    // Claude espera paciente, deja que te acerques
+    // no attack, solo espera
+  }
+  else if(p2.persona==='chatgpt' && p2.energy>=35 && d<=5 && Math.random()<0.18){
+    tryAttack(p2,'special'); // ChatGPT usa especial estratégico
+  }
+  else if(Math.random()<m.defense) { p2.blocking=true; p2.state='block'; p2.timer=.5+.4*m.defense; 
     if(r<m.aggression*.6 && p2.cooldown<=0){ setTimeout(()=>{if(!roundOver){p2.blocking=false; tryAttack(p2,'punch');}},220); }
   }
-  else if(d>4.5){ moveAI(0,1,4.2*dt); if(r<m.aggression) tryAttack(p2,'special'); }
-  else if(d>2.6){ moveAI(0,1,3.6*dt); if(r<m.aggression*.7) tryAttack(p2, Math.random()<.4?'kick':'punch'); }
+  else if(d>4.5){ moveAI(0,1,speed*dt); if(r<m.aggression) tryAttack(p2,'special'); }
+  else if(d>2.6){ moveAI(0,1,speed*dt); if(r<m.aggression*.7) tryAttack(p2, Math.random()<.4?'kick':'punch'); }
   else { // cerca
     if(r<m.aggression) tryAttack(p2, Math.random()<.5?'punch':'kick');
     else if(r<m.aggression+m.defense*.5){ p2.blocking=true; p2.state='block'; p2.timer=.4; }
-    else moveAI(1,0,2*dt); // esquiva lateral
+    else moveAI(1,0,speed*.55*dt); // esquiva lateral
   }
   if(p2.state==='block'&&p2.timer<=0){p2.blocking=false;p2.state='idle';}
   p2.energy=Math.min(100,p2.energy+dt*3);
-  document.getElementById('style1').textContent = m.aggression>m.defense?'Agresiva':'Defensiva';
+  document.getElementById('style1').textContent = cfg.label;
   document.getElementById('blockStat').textContent = Math.round(m.defense*100)+'%';
   document.getElementById('counterStat').textContent = m.counters;
 }
