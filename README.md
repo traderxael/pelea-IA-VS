@@ -5,14 +5,26 @@ Juego 3D para celulares de pelea IA vs IA, estilo AI Fight.
 ## Características
 - **Modo:** IA vs IA (con control opcional del jugador)
 - **IA:** Adaptativa — aprende de ataques cercanos/lejanos, sube bloqueo y contraataque
-- **Luchadores:** Robots 3D (TITÁN AZUL vs VOLT ROJO)
+- **Luchadores:** Robots 3D y soldado riggeados (modelos Blender GLB animados)
 - **Plataforma:** Web con Three.js, sin instalar APK
 - **Controles:** Joystick virtual + botones táctiles (Puño 👊, Patada 🦵, Especial ⚡)
+- **Armas:** 6 armas con alcance/daño/recarga distintos (la IA también las usa)
 
 ## Cómo jugar
 Abre `index.html` en tu celular o computadora. En PC: WASD para moverte, J=puño, K=patada, L=especial. En celular: usa el joystick y los botones en pantalla.
 
 Barras de vida y energía, daño flotante, partículas, cámara que sigue la acción, rondas con contador y modo AUTO para ver pelear a ambas IAs.
+
+## Armas (elige con la barra superior)
+- 🥊 **Puños** — equilibrado, daño normal
+- 🗡️ **Espada** — mucho mayor alcance (4.7m) y +30% daño
+- 🔨 **Martillo** — daño brutal (x2.0) pero lento (recarga 1.75x)
+- 🥢 **Nunkus** — muy rápido (recarga 0.5x)
+- 🪄 **Lanza** — alcance máximo (6.3m)
+- 🔫 **Plasma** — proyectil a distancia que viaja por el aire
+- 🎲 VOLT ROJO elige un arma aleatoria en cada ronda (reto distinto cada vez)
+
+Cambia de arma con un toque en la barra de armas.
 
 ## Luchadores (elige tu personaje)
 - 🤖 **Titán Azul** — robot clásico: 100 de vida, velocidad normal
@@ -36,30 +48,12 @@ Cambia la personalidad con el selector desplegable arriba a la izquierda. Cada u
 https://traderxael.github.io/pelea-IA-VS/ (GitHub Pages)
 
 ## Modelos 3D animados (Blender + Tripo AI)
-El juego carga automáticamente modelos `.glb` desde `assets/models/` (Idle + Attack riggeado). Si no existen, usa los modelos procedurales. Ver **MODELOS.md**: incluye el script de Blender (`tools/blender_build.py`) y los pasos para Tripo AI.
-
-## Modelos estáticos con Tripo (pendiente: créditos)
-
-Los GLB generados directo con Tripo son **mallas estáticas sin rig**: no
-entran en `assets/models/` (ese pipeline es riggeado). Sirven como
-modelos alternativos/showcase en `models/`.
-
-Generador listo en `tools/tripo_generate.py` (lee `TRIPO_API_KEY` del
-entorno o del `.env` local, que está en `.gitignore`):
-
-```bash
-python tools/tripo_generate.py            # TITÁN AZUL + VOLT ROJO
-python tools/tripo_generate.py --only titan
-```
-
-Estado al 2026-11-04: la API responde (auth OK) pero la cuenta devuelve
-`code 2010: You don't have enough credit`. Hay que comprar créditos en
-https://developers.tripo3d.ai/en/keys y re-ejecutar el comando.
+El juego carga automáticamente modelos `.glb` (Idle + Attack) desde `assets/models/`. Titán, Volt y Soldado ya están hechos con Blender. Ver **MODELOS.md** para el pipeline y Tripo AI.
 
 ## Estructura
 - `index.html` — juego completo (HTML + CSS + JS + Three.js)
-- `MODELOS.md` — pipeline de modelos 3D (Blender + Tripo)
-- `models/` — GLB estáticos generados con Tripo (cuando haya créditos)
-- `tools/blender_build.py` — robots riggeados animados (Blender)
-- `tools/tripo_generate.py` — generador de modelos estáticos (key por entorno)
+- `MODELOS.md` — pipeline de modelos 3D
+- `assets/models/` — GLB riggeados de Blender (titan, volt, soldier)
+- `tools/blender_build.py` — generador de modelos animados
+- `tools/tripo_generate.py` — generador Tripo API (requiere créditos)
 - `DISENO.md` — diseño y decisiones tomadas
