@@ -38,6 +38,28 @@ https://traderxael.github.io/pelea-IA-VS/ (GitHub Pages)
 ## Modelos 3D animados (Blender + Tripo AI)
 El juego carga automáticamente modelos `.glb` desde `assets/models/` (Idle + Attack riggeado). Si no existen, usa los modelos procedurales. Ver **MODELOS.md**: incluye el script de Blender (`tools/blender_build.py`) y los pasos para Tripo AI.
 
+## Modelos estáticos con Tripo (pendiente: créditos)
+
+Los GLB generados directo con Tripo son **mallas estáticas sin rig**: no
+entran en `assets/models/` (ese pipeline es riggeado). Sirven como
+modelos alternativos/showcase en `models/`.
+
+Generador listo en `tools/tripo_generate.py` (lee `TRIPO_API_KEY` del
+entorno o del `.env` local, que está en `.gitignore`):
+
+```bash
+python tools/tripo_generate.py            # TITÁN AZUL + VOLT ROJO
+python tools/tripo_generate.py --only titan
+```
+
+Estado al 2026-11-04: la API responde (auth OK) pero la cuenta devuelve
+`code 2010: You don't have enough credit`. Hay que comprar créditos en
+https://developers.tripo3d.ai/en/keys y re-ejecutar el comando.
+
 ## Estructura
 - `index.html` — juego completo (HTML + CSS + JS + Three.js)
+- `MODELOS.md` — pipeline de modelos 3D (Blender + Tripo)
+- `models/` — GLB estáticos generados con Tripo (cuando haya créditos)
+- `tools/blender_build.py` — robots riggeados animados (Blender)
+- `tools/tripo_generate.py` — generador de modelos estáticos (key por entorno)
 - `DISENO.md` — diseño y decisiones tomadas
