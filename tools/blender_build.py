@@ -194,6 +194,49 @@ def export_glb(path):
     sc.frame_set(1)
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', export_animations=True, export_skins=True)
 
+def build_soldier(name):
+    clear_scene()
+    build_armature()
+    mat_skin = make_mat(name+'_skin', (0.79,0.55,0.37), metallic=0.05, roughness=0.65)
+    mat_gr = make_mat(name+'_gr', (0.09,0.3,0.16), metallic=0.25, roughness=0.55)
+    mat_dark = make_mat(name+'_dark', (0.11,0.17,0.11), metallic=0.35, roughness=0.55)
+    mat_black = make_mat(name+'_black', (0.04,0.06,0.04), metallic=0.4, roughness=0.5)
+    mat_glow = make_mat(name+'_glow', (0.52,0.8,0.09), metallic=0.0, roughness=0.4, emissive=(0.52,0.8,0.09), strength=3.5)
+    # Torso con chaleco
+    cyl_between('Spine', (0,0,0.55), (0,0,1.05), 0.4, mat_skin, name+'_pelvis')
+    cyl_between('Chest', (0,0,1.02), (0,0,1.6), 0.51, mat_dark, name+'_vest')
+    cyl_between('Chest', (0,0,1.6), (0,0,1.62), 0.46, mat_skin, name+'_collar')
+    box('Chest', (-0.2,0.3,1.2), (0.19,0.09,0.14), mat_black, name+'_pouchL')
+    box('Chest', (0.2,0.3,1.2), (0.19,0.09,0.14), mat_black, name+'_pouchR')
+    cyl_between('Chest', (0,0,0.92), (0,0,1.04), 0.46, mat_black, name+'_belt')
+    sphere('Chest', (0,0.34,1.52), 0.07, mat_glow, name+'_insignia')
+    # Cabeza: rostro + casco + ala
+    sphere('Head', (0,0,1.86), 0.26, mat_skin, name+'_face')
+    sphere('Head', (0,0,1.96), 0.32, mat_gr, name+'_helmet', squash=(1,1,0.78))
+    cyl_between('Head', (-0.31,0,1.9), (0.31,0,1.9), 0.035, mat_dark, name+'_brim')
+    box('Head', (0,0.22,1.88), (0.3,0.07,0.07), mat_glow, name+'_visor')
+    # Hombreras + brazos + rifle
+    sphere('L_UpperArm', (-0.29,0,1.52), 0.17, mat_gr, name+'_shL')
+    sphere('R_UpperArm', (0.29,0,1.52), 0.17, mat_gr, name+'_shR')
+    cyl_between('L_UpperArm', (-0.28,0,1.48), (-0.88,0,1.1), 0.13, mat_gr, name+'_bicepsL')
+    cyl_between('L_ForeArm', (-0.88,0,1.1), (-1.26,0,0.8), 0.11, mat_gr, name+'_foreL')
+    sphere('L_ForeArm', (-1.3,0,0.75), 0.15, mat_skin, name+'_fistL')
+    cyl_between('R_UpperArm', (0.28,0,1.48), (0.88,0,1.1), 0.13, mat_gr, name+'_bicepsR')
+    cyl_between('R_ForeArm', (0.88,0,1.1), (1.26,0,0.8), 0.11, mat_gr, name+'_foreR')
+    # Rifle en brazo derecho: cuerpo + cañón + mira
+    cyl_between('R_ForeArm', (0.95,0,1.02), (1.5,0,0.68), 0.045, mat_black, name+'_rifleBody')
+    cyl_between('R_ForeArm', (1.42,0,0.7), (1.86,0,0.55), 0.028, mat_black, name+'_rifleBarrel')
+    box('R_ForeArm', (1.24,0,1.06), (0.1,0.05,0.08), mat_dark, name+'_scope')
+    # Piernas
+    cyl_between('L_Thigh', (-0.3,0,0.82), (-0.38,0,0.42), 0.15, mat_dark, name+'_thighL')
+    cyl_between('L_Shin', (-0.38,0,0.4), (-0.4,0,0.05), 0.13, mat_dark, name+'_shinL')
+    sphere('L_Shin', (-0.4,0.07,0.03), 0.17, mat_black, name+'_bootL', squash=(1,1.4,0.55))
+    cyl_between('R_Thigh', (0.3,0,0.82), (0.38,0,0.42), 0.15, mat_dark, name+'_thighR')
+    cyl_between('R_Shin', (0.38,0,0.4), (0.4,0,0.05), 0.13, mat_dark, name+'_shinR')
+    sphere('R_Shin', (0.4,0.07,0.03), 0.17, mat_black, name+'_bootR', squash=(1,1.4,0.55))
+    # Mochila
+    cyl_between('Chest', (0,-0.45,1.1), (0,-0.45,1.62), 0.2, mat_gr, name+'_pack')
+
 def main():
     out = 'C:/c/Users/USUARIO/ai-robot-fight/assets/models'
     # TITÁN AZUL (robot)
@@ -204,6 +247,10 @@ def main():
     build_robot((0.86,0.15,0.15), 0.75, (1.0,0.42,0.0), 'volt')
     make_actions()
     export_glb(out + '/volt.glb')
+    # SOLDADO VERDE
+    build_soldier('soldier')
+    make_actions()
+    export_glb(out + '/soldier.glb')
     print('DONE glTF export')
 
 main()
