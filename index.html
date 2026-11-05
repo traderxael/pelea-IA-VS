@@ -24,12 +24,13 @@
   .controls{position:fixed;left:0;right:0;bottom:0;height:170px;display:flex;justify-content:space-between;align-items:flex-end;padding:12px;z-index:6;pointer-events:none}
   #joyBase{width:126px;height:126px;border-radius:50%;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.35);position:relative;pointer-events:auto}
   #joyKnob{width:58px;height:58px;border-radius:50%;background:#e2e8f0;position:absolute;left:34px;top:34px;box-shadow:0 4px 14px #000}
-  .btns{display:grid;grid-template-columns:70px 70px;gap:10px;pointer-events:auto}
+  .btns{display:grid;grid-template-columns:70px 70px 86px;gap:10px;pointer-events:auto}
   button{border:0;border-radius:50%;font-weight:900;color:#fff;box-shadow:0 6px 0 rgba(0,0,0,.35)}
   button:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
   .b1{width:70px;height:70px;background:#2563eb;font-size:22px}
   .b2{width:70px;height:70px;background:#dc2626;font-size:22px}
-  .b3{width:70px;height:70px;background:#7c3aed;font-size:18px;grid-column:span 2;width:100%}
+  .b4{width:86px;height:70px;background:#0284c7;font-size:15px}
+  .b3{width:70px;height:70px;background:#7c3aed;font-size:18px;grid-column:span 3;width:100%}
   .topbtns{position:fixed;top:96px;left:10px;display:flex;gap:8px;z-index:7;flex-wrap:wrap;max-width:100vw}
   .topbtns button, .topbtns select{border-radius:99px;padding:10px 14px;background:#1e293b;border:1px solid #fff3;font-size:13px;color:#fff;box-shadow:none;outline:none}
   .topbtns select{background:#0f172a}
@@ -95,6 +96,7 @@
   <div class="btns">
     <button class="b1" id="punch">👊</button>
     <button class="b2" id="kick">🦵</button>
+    <button class="b4" id="launcher">🚀 AIRE</button>
     <button class="b3" id="special">⚡ ESPECIAL</button>
   </div>
 </div>
@@ -254,6 +256,8 @@ function makeSoldier(color, accent){
 
 // Estado global de animaciones de impacto/KO
 let shakeT=0, koState=null;
+// Slow-motion cinematográfico (KO y lanzamientos aéreos): 1 = tiempo normal
+let timeScale=1;
 
 class Fighter{
   constructor(mesh, name, isAI){
@@ -263,6 +267,8 @@ class Fighter{
     this.state='idle'; this.timer=0; this.cooldown=0; this.hurt=0;
     this.blocking=false; this.attackType=null;
     this.hurtTilt=0; this.kb=new THREE.Vector3(); this.walkPhase=0;
+    // Combate aéreo (estilo launcher/juggle): air = víctima en vuelo, aerial = atacante rematando
+    this.air=null; this.aerial=null;
     this.legendaryUntil=0; this.prevWeapon=null;
     // Adaptativa
     this.memory={closeAttacks:0, farAttacks:0, blocks:0, counters:0, hitsTaken:0, lastOppMove:0, aggression:.45, defense:.35, danger:0};
@@ -280,7 +286,7 @@ class Fighter{
     };
   }
   cfg(){ return this.personaCfg[this.persona] || this.personaCfg.adaptativa; }
-  reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; this.hurtTilt=0; this.kb.set(0,0,0); this.mesh.rotation.x=0; }
+  reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; this.hurtTilt=0; this.kb.set(0,0,0); this.mesh.rotation.x=0; this.air=null; this.aerial=null; }
   hit(dmg, attacker, heavy){
     if(this.blocking && Math.random()<.75){ 
       if(attacker) attacker.memory.counters++;
@@ -502,6 +508,8 @@ function sfx(kind){
       case 'block': tone('triangle',1250,1250,.1,.22); break;
       case 'special': tone('sawtooth',180,760,.4,.3); break;
       case 'combo': tone('square',600,880,.09,.18); break;
+      case 'launcher': tone('sine',160,850,.3,.3); noise(.18,900,'bandpass',.15); break;
+      case 'slam': tone('sine',120,35,.24,.4); noise(.2,420,'lowpass',.32); break;
       case 'legendary': [523,659,784,1047].forEach((n,i)=>setTimeout(()=>{
         try{
           const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -664,6 +672,7 @@ function bindBtn(id, fn){
 }
 bindBtn('punch',()=>tryAttack(p1,'punch'));
 bindBtn('kick',()=>tryAttack(p1,'kick')) ;
+bindBtn('launcher',()=>tryAttack(p1,'launcher'));
 bindBtn('special',()=>tryAttack(p1,'special'));
 
 document.getElementById('autoBtn').onclick=e=>{autoMode=!autoMode; e.target.textContent=autoMode?'🤖 AUTO: ON':'🎮 MANUAL';};
@@ -680,15 +689,16 @@ function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-
 function dist(a,b){ return a.pos.distanceTo(b.pos); }
 
 function tryAttack(f,type){
-  if(roundOver||f.cooldown>0||f.hurt>0) return;
+  if(roundOver||f.cooldown>0||f.hurt>0||f.air) return;
   if(type==='special' && f.energy<35){ showToast('Necesitas 35⚡'); return; }
   const w=weaponOf(f);
+  if(type==='launcher' && w.kind==='ranged'){ /* armas a distancia no lanzan: atacan normal */ type='punch'; }
   f.state='attack'; f.timer=.32; f.attackType=type;
   if(f.mesh.userData.attackClip && f.mesh.userData.mixer){
     const a=f.mesh.userData.mixer.clipAction(f.mesh.userData.attackClip);
     a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play();
   }
-  f.cooldown = (type==='special'?.9:(type==='kick'?.55:.38)) * w.cd;
+  f.cooldown = (type==='special'?.9:(type==='launcher'?.7:(type==='kick'?.55:.38))) * w.cd;
   if(type==='special') f.energy-=35;
   const target = f===p1?p2:p1;
   // Adaptive memory: tracks opponent patterns
@@ -704,17 +714,26 @@ function tryAttack(f,type){
   setTimeout(()=>{
     if(roundOver) return;
     if(dist(f,target)<w.range){
-      let dmg = type==='special'?22:(type==='kick'?14:9);
+      let dmg = type==='special'?22:(type==='launcher'?11:(type==='kick'?14:9));
       if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
       dmg=Math.round(dmg*w.dmg*comboBonus(f));
       const dealt=target.hit(dmg,f,type==='special'||w.key==='hammer');
       registerHit(f,dealt);
       if(dealt>0){
         if(type==='special') sfx('special');
+        else if(type==='launcher') sfx('launcher');
         else if(type==='kick') sfx('kick');
         else sfx(w.key==='fists'?'punch':w.key);
       }
       if(type==='special') burst(target.pos.x,1.4,target.pos.z,0xa78bfa);
+      // ── LAUNCHER (estilo ENENRA): si el golpe aéreo conecta, el rival sale volando ──
+      if(type==='launcher' && dealt>0 && !target.air && target.hp>0){
+        target.air={vy:6.8}; target.blocking=false; target.state='air';
+        f.aerial={victim:target, hits:3, next:.4};
+        burst(target.pos.x,.8,target.pos.z,0x38bdf8);
+        shakeT=.4; timeScale=.45;   // mini slow-motion en el lanzamiento
+        showToast(target===p1 ? '🚀 ¡VOLT te lanzó al aire!' : '🚀 ¡RIVAL LANZADO! Sigue el combo aéreo');
+      }
       // Tramposa: a veces esquiva por completo el primer golpe
       if(f===p1 && p2.persona==='tramposa' && Math.random()<0.18){
         p2.pos.x += (Math.random()<.5?-1.2:1.2); clampArena(p2);
@@ -762,7 +781,7 @@ function adaptiveBrain(dt){
   }
   m.danger += (p1.state==='attack'?1:0)*dt;
 
-  if(p2.hurt>0||roundOver) return;
+  if(p2.hurt>0||p2.air||p2.aerial||roundOver) return;
   const d=dist(p1,p2);
   faceTo(p2,p1);
   p2.timer-=dt; p2.cooldown-=dt;
@@ -807,7 +826,9 @@ function adaptiveBrain(dt){
   else if(d>4.5){ moveAI(0,1,speed*dt); if(r<m.aggression) tryAttack(p2,'special'); }
   else if(d>2.6){ moveAI(0,1,speed*dt); if(r<m.aggression*.7) tryAttack(p2, Math.random()<.4?'kick':'punch'); }
   else { // cerca
-    if(r<m.aggression) tryAttack(p2, Math.random()<.5?'punch':'kick');
+    // La IA también lanza al aire y remata aéreo (estilo ENENRA)
+    if(!p1.air && r<m.aggression*.28 && p1.hp>0){ tryAttack(p2,'launcher'); }
+    else if(r<m.aggression) tryAttack(p2, Math.random()<.5?'punch':'kick');
     else if(r<m.aggression+m.defense*.5){ p2.blocking=true; p2.state='block'; p2.timer=.4; }
     else moveAI(1,0,speed*.55*dt); // esquiva lateral
   }
@@ -828,6 +849,7 @@ function clampArena(f){ f.pos.x=THREE.MathUtils.clamp(f.pos.x,-7.5,7.5); f.pos.z
 let wins1=0,wins2=0,timeLeft=99;
 function endRound(winner){
   roundOver=true;
+  timeScale=.22;  // slow-motion dramático en el KO
   const loser = winner===p1 ? p2 : p1;
   koState={loser, winner, t:0};
   shakeT=.6;
@@ -842,19 +864,24 @@ setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').te
 
 function playerUpdate(dt){
   p1.timer-=dt; p1.cooldown-=dt; if(p1.hurt>0)p1.hurt-=dt;
+  if(p1.air||p1.aerial) return;   // en el aire no controlas (te lanzaron / combo aéreo)
   faceTo(p1,p2);
   let mx=0,mz=0;
   if(autoMode){
     // Ambos pelean solos cuando AUTO está ON (modo espectador IA vs IA)
     // Jugador actúa como segunda IA simple
     const d=dist(p1,p2);
-    if(d>3) { mz=1; } else if(Math.random()<.02) tryAttack(p1,Math.random()<.5?'punch':'kick');
+    if(d>3) { mz=1; }
+    else if(Math.random()<.03){ // AUTO también lanza aéreos a veces
+      tryAttack(p1, Math.random()<.22?'launcher':(Math.random()<.5?'punch':'kick'));
+    }
     if(d<2 && Math.random()<.01) mz=-.6;
   } else {
     if(keys['w']||keys['arrowup']) mz+=1; if(keys['s']||keys['arrowdown']) mz-=1;
     if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
     mx+=joy.x; mz+=-joy.y;
     if(keys['j']) tryAttack(p1,'punch'); if(keys['k']) tryAttack(p1,'kick'); if(keys['l']) tryAttack(p1,'special');
+    if(keys[' ']||keys['i']) tryAttack(p1,'launcher'); // 🚀 lanzamiento aéreo
   }
   const len=Math.hypot(mx,mz); if(len>1){mx/=len;mz/=len;}
   const fwd=new THREE.Vector3(Math.sin(p1.facing),0,Math.cos(p1.facing));
@@ -879,8 +906,8 @@ function aiAnim(dt){
     else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
     if(p2.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
   }
-  p2.mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
-  p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
+  if(!p2.air&&!p2.aerial&&p2.pos.y<=.32) p2.mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
+  if(!p1.air&&!p1.aerial&&p1.pos.y<=.32) p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
 }
 
 function updateWalkAnim(dt){
@@ -904,7 +931,7 @@ function updateWalkAnim(dt){
     }
     // reacción al impacto: inclinar hacia atrás + empujón que se desvanece
     f.hurtTilt=Math.max(0,(f.hurtTilt||0)-dt*2.2);
-    if(!koState||koState.loser!==f){
+    if(!f.air && (!koState||koState.loser!==f)){
       f.mesh.rotation.x=-f.hurtTilt*.4;
       if(f.kb.lengthSq()>0.01){
         f.pos.addScaledVector(f.kb,dt);
@@ -918,16 +945,61 @@ function updateKo(dt){
   if(!koState) return;
   koState.t+=dt;
   const {loser, winner}=koState;
-  const p=Math.min(1, koState.t*1.8);
-  loser.mesh.rotation.x=-p*1.5;                 // cae hacia atrás y se hunde
-  loser.mesh.position.y=.3-p*.3;
+  if(loser.air){ /* el KO en pausa aérea: lo maneja updateAereo hasta tocar suelo */ }
+  else{
+    const p=Math.min(1, koState.t*1.8);
+    loser.mesh.rotation.x=-p*1.5;                 // cae hacia atrás y se hunde
+    loser.mesh.position.y=.3-p*.3;
+  }
   const hop=Math.abs(Math.sin(koState.t*7))*.55*Math.max(0,1-koState.t/2.5);
   winner.mesh.position.y=.3+hop;                // salta de celebración
+}
+
+// ── Combate aéreo estilo ENENRA: juggle del atacante + física de vuelo ──────
+function updateAereo(dt){
+  for(const f of [p1,p2]){
+    // Física de la víctima en el aire
+    if(f.air){
+      f.air.vy-=15*dt;
+      f.pos.y+=f.air.vy*dt;
+      f.mesh.rotation.x=THREE.MathUtils.clamp(-f.air.vy*.07,-1.05,.55); // vuelve en el aire
+      if(f.pos.y<=.3){ // aterrizaje: slam con polvo
+        f.pos.y=.3; f.mesh.rotation.x=0; f.air=null; f.state='idle';
+        burst(f.pos.x,.4,f.pos.z,0x94a3b8); shakeT=.4; sfx('slam');
+      }
+    }
+    // Regreso suave del atacante tras terminar el combo aéreo
+    if(!f.air&&!f.aerial&&f.pos.y>.32){
+      f.pos.y=Math.max(.3, f.pos.y-4.5*dt);
+      if(f.pos.y<=.32) f.pos.y=.3;
+    }
+    // Ataques aéreos del atacante (juggle)
+    if(f.aerial){
+      const a=f.aerial, v=a.victim;
+      if(roundOver||v.hp<=0||!v.air||a.hits<=0){ f.aerial=null; continue; }
+      f.mesh.rotation.x=0;
+      f.pos.y=.3+Math.max(.35, v.pos.y*.8-1);      // el atacante salta tras la víctima
+      faceTo(f,v);
+      if(a.t>=a.next){
+        a.next+=.3; a.hits--;
+        let dmg=Math.round(9*weaponOf(f).dmg*comboBonus(f)*(f===p2?(.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus:1));
+        const dealt=v.hit(dmg,f,false);
+        registerHit(f,dealt);
+        if(v.air) v.air.vy=Math.max(v.air.vy,3.2); // el juggle lo mantiene volando
+        burst(v.pos.x,v.pos.y+.7,v.pos.z,0xfbbf24);
+        shakeT=.25; sfx('punch');
+        if(v.hp<=0){ endRound(f); continue; }
+      }
+      a.t+=dt;
+    }
+  }
 }
 const clock=new THREE.Clock();
 function loop(){
   requestAnimationFrame(loop);
-  const dt=Math.min(.05,clock.getDelta());
+  const rdt=Math.min(.05,clock.getDelta());
+  if(timeScale<1) timeScale=Math.min(1, timeScale+rdt*(koState?.8:1.9)); // slow-mo se recupera
+  const dt=rdt*timeScale;
   for(const mx of mixers) mx.update(dt);   // animaciones glTF (Blender / Tripo AI)
   decayCombo(dt);
   updateLegendary(dt);
@@ -938,6 +1010,7 @@ function loop(){
   else comboEl.textContent='';
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
   updateWalkAnim(dt);
+  updateAereo(dt);
   updateKo(dt);
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.userData.life-=dt*1.4; p.position.addScaledVector(p.userData.v,dt); p.userData.v.y-=6*dt;
@@ -974,7 +1047,7 @@ function loop(){
     camera.position.x+=(Math.random()-.5)*shakeT*1.5;
     camera.position.y+=(Math.random()-.5)*shakeT*1.1;
   }
-  camera.lookAt(mid.x,1.2,mid.z);
+  camera.lookAt(mid.x, Math.max(1.2,(p1.pos.y+p2.pos.y)/2+.5), mid.z);
   document.getElementById('hp1').style.width=(p1.hp/(p1.maxHp||100)*100)+'%'; document.getElementById('hp1').className='fill hp'+(p1.hp/(p1.maxHp||100)<30?' low':'');
   document.getElementById('hp2').style.width=(p2.hp/(p2.maxHp||100)*100)+'%'; document.getElementById('hp2').className='fill hp'+(p2.hp/(p2.maxHp||100)<30?' low':'');
   document.getElementById('en1').style.width=p1.energy+'%'; document.getElementById('en2').style.width=p2.energy+'%';
