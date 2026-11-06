@@ -48,7 +48,7 @@
 
 <div class="hud">
   <div class="card">
-    <div class="name">🔵 TITÁN AZUL <span id="youTag" class="tag">TÚ</span></div>
+    <div class="name"><span id="youName">🔵 TITÁN AZUL</span> <span id="youTag" class="tag">TÚ</span></div>
     <div class="bar"><div id="hp1" class="fill hp"></div></div>
     <div class="bar enbar"><div id="en1" class="fill en"></div></div>
     <div id="hint">Estilo IA: <span id="style1">-</span></div>
@@ -60,7 +60,7 @@
     <div id="wins" class="tag">0 - 0</div>
   </div>
   <div class="card" style="text-align:right">
-    <div class="name">🔴 VOLT ROJO <span class="tag" id="personaTag">🧠 ADAPTATIVA</span></div>
+    <div class="name"><span id="rivalName">🔴 VOLT ROJO</span> <span class="tag" id="personaTag">🧠 ADAPTATIVA</span></div>
     <div class="bar"><div id="hp2" class="fill hp"></div></div>
     <div class="bar enbar"><div id="en2" class="fill en"></div></div>
     <div id="hint">Bloqueo: <span id="blockStat">0%</span> · Contra: <span id="counterStat">0</span></div>
@@ -72,8 +72,19 @@
   <select id="charSel" title="Tu personaje">
     <option value="robot">🤖 Titán</option>
     <option value="soldier">🪖 Soldado</option>
+    <option value="ninja">🥷 Ninja</option>
+    <option value="samurai">⚔️ Samurai</option>
+    <option value="gladiator">🛡️ Gladiador</option>
   </select>
-  <select id="personaSel" title="Personalidad de VOLT ROJO">
+  <select id="rivalSel" title="Tu rival (IA)">
+    <option value="volt">🔴 Volt</option>
+    <option value="robot">🤖 Titán</option>
+    <option value="soldier">🪖 Soldado</option>
+    <option value="ninja">🥷 Ninja</option>
+    <option value="samurai">⚔️ Samurai</option>
+    <option value="gladiator">🛡️ Gladiador</option>
+  </select>
+  <select id="personaSel" title="Personalidad de la IA rival">
     <option value="adaptativa">🧠 Adaptativa</option>
     <option value="agresiva">🔥 Agresiva</option>
     <option value="defensiva">🛡️ Defensiva</option>
@@ -311,7 +322,7 @@ class Fighter{
 // Si existe assets/models/<kind>.glb lo usa con sus animaciones (Idle/Attack);
 // si no, usa el modelo procedural de arriba. Sin .glb → respaldo automático.
 const mixers=[];
-const gltfPreloaded={robot:null, soldier:null};
+const gltfPreloaded={robot:null, soldier:null, volt:null, ninja:null, samurai:null, gladiator:null};
 const gltfLoader=new GLTFLoader();
 function gltfFindNode(mesh, ...names){
   let found=null;
@@ -353,6 +364,17 @@ function preloadGltf(path, kind){
 preloadGltf('assets/models/titan.glb','robot');
 preloadGltf('assets/models/soldier.glb','soldier');
 preloadGltf('assets/models/volt.glb','volt');
+preloadGltf('assets/models/ninja.glb','ninja');
+preloadGltf('assets/models/samurai.glb','samurai');
+preloadGltf('assets/models/gladiator.glb','gladiator');
+// Segunda instancia de cada modelo: un GLB con skinning no se puede clonar
+// (comparte el esqueleto), así que cada luchador usa su propia carga.
+preloadGltf('assets/models/titan.glb','robot_b');
+preloadGltf('assets/models/soldier.glb','soldier_b');
+preloadGltf('assets/models/volt.glb','volt_b');
+preloadGltf('assets/models/ninja.glb','ninja_b');
+preloadGltf('assets/models/samurai.glb','samurai_b');
+preloadGltf('assets/models/gladiator.glb','gladiator_b');
 
 const p1mesh=makeRobot(0x2563eb,0x38bdf8); scene.add(p1mesh);
 const p2mesh=makeRobot(0xdc2626,0xff6600); scene.add(p2mesh);
@@ -360,25 +382,40 @@ const p1=new Fighter(p1mesh,'TITÁN AZUL',false);
 const p2=new Fighter(p2mesh,'VOLT ROJO',true);
 p1.reset(-3,0); p2.reset(3,0);
 
-// Selección de personaje: Robot Titán 🤖 o Soldado 🪖
-const charSpeeds={robot:1.0, soldier:1.18};        // el soldado es más rápido
-const charHps={robot:100, soldier:85};              // pero tiene menos vida
+// Selección de personaje: catálogo de luchadores 3D (GLB de Blender o respaldo procedural)
+const CHARS={
+  robot:    {label:'🤖 TITÁN AZUL',    short:'🤖 TITÁN',    hp:100, speed:1.00, fallback:()=>makeRobot(0x2563eb,0x38bdf8)},
+  soldier:  {label:'🪖 SOLDADO VERDE', short:'🪖 SOLDADO',  hp:85,  speed:1.18, fallback:()=>makeSoldier(0x16a34a,0x84cc16)},
+  volt:     {label:'🔴 VOLT ROJO',     short:'🔴 VOLT',     hp:100, speed:1.00, fallback:()=>makeRobot(0xdc2626,0xff6600)},
+  ninja:    {label:'🥷 NINJA SOMBRA',  short:'🥷 NINJA',    hp:75,  speed:1.38, fallback:()=>makeSoldier(0x1e1b4b,0x7c3aed)},
+  samurai:  {label:'⚔️ SAMURAI ROJO',  short:'⚔️ SAMURAI',  hp:95,  speed:1.12, fallback:()=>makeRobot(0x991b1b,0xf59e0b)},
+  gladiator:{label:'🛡️ GLADIADOR',    short:'🛡️ GLADIADOR',hp:120, speed:0.85, fallback:()=>makeRobot(0xb45309,0xf59e0b)},
+};
+// Usa la primera instancia cargada del modelo que no esté en escena
+function baseKind(kind){ return kind.replace(/_b$/,''); }
+function spawnGltf(kind, pos){
+  for(const k of [kind, kind+'_b']){
+    const src=gltfPreloaded[k];
+    if(src && src.parent!==scene){ src.position.copy(pos); src.rotation.x=0; scene.add(src); return src; }
+  }
+  return null;
+}
 function swapP1(kind){
+  const c=CHARS[kind]||CHARS.robot;
+  if(p1.kind===kind && p1.mesh && p1.mesh.userData.isGltf) return; // ya está con este modelo
+  p1.kind=kind;
   const pos=p1.pos.clone();
   scene.remove(p1.mesh);
-  let mesh=null;
-  if(gltfPreloaded[kind]){
-    mesh=gltfPreloaded[kind]; mesh.position.copy(pos); scene.add(mesh);
-    showToast('🤖 MODELO 3D BLENDER/TRIPO CARGADO');
-  } else {
-    mesh = kind==='soldier' ? makeSoldier(0x16a34a,0x84cc16) : makeRobot(0x2563eb,0x38bdf8);
-    mesh.position.copy(pos); scene.add(mesh);
-  }
+  let mesh=spawnGltf(kind,pos);
+  if(mesh){ showToast('🤖 MODELO 3D CARGADO: '+c.short); }
+  else { mesh=c.fallback(); mesh.position.copy(pos); scene.add(mesh); }
   p1.mesh=mesh; p1.pos=mesh.position;
-  p1.maxHp=charHps[kind]; p1.hp=charHps[kind];
-  p1.speedMul=charSpeeds[kind];
-  p1.name=kind==='soldier'?'🪖 SOLDADO VERDE':'TITÁN AZUL';
-  document.querySelector('#youTag').textContent = kind==='soldier'?'🪖 SOLDADO':'🤖 TÚ';
+  p1.maxHp=c.hp; p1.hp=c.hp;
+  p1.speedMul=c.speed;
+  p1.name=c.label;
+  document.getElementById('youName').textContent=c.label;
+  document.querySelector('#youTag').textContent=c.short+' · TÚ';
+  attachWeapon(p1);
 }
 // ── Sistema de armas ──────────────────────────────────────────────────────
 // Equipa armas que cambian daño, alcance y velocidad: puños, espada, martillo...
@@ -608,22 +645,39 @@ function updateLegendaryTimers(dt){
 }
 
 document.getElementById('charSel').onchange=e=>{
+  const c=CHARS[e.target.value];
   swapP1(e.target.value);
-  showToast(e.target.value==='soldier'?'🪖 SOLDADO: rápido (+18% vel), vida 85':'🤖 TITÁN: vida 100, vel normal');
+  showToast(`${c.short}: vida ${c.hp}, velocidad ${Math.round(c.speed*100)}%`);
 };
-function swapP2(){
+document.getElementById('rivalSel').onchange=e=>{
+  const c=CHARS[e.target.value];
+  showToast(`${c.short} será tu rival: vida ${c.hp}, velocidad ${Math.round(c.speed*100)}%`);
+  swapP2(e.target.value);
+};
+function swapP2(kind){
+  kind = kind || (document.getElementById('rivalSel')||{value:'volt'}).value;
+  const c=CHARS[kind]||CHARS.volt;
+  if(p2.kind===kind && p2.mesh && p2.mesh.userData.isGltf) return; // ya está con este modelo
+  p2.kind=kind;
   const pos=p2.pos.clone();
   scene.remove(p2.mesh);
-  const mesh=gltfPreloaded.volt;
-  mesh.position.copy(pos); mesh.position.y=.3;
-  scene.add(mesh);
+  let mesh=spawnGltf(kind,pos);
+  if(!mesh){ mesh=c.fallback(); mesh.position.copy(pos); scene.add(mesh); }
+  mesh.position.y=.3;
   p2.mesh=mesh; p2.pos=mesh.position;
+  p2.maxHp=c.hp; p2.hp=c.hp;
+  p2.speedMul=c.speed;
+  p2.name=c.label;
+  document.getElementById('rivalName').textContent=c.label;
+  attachWeapon(p2);
 }
 function trySwap(kind){
   // Cuando un .glb termina de cargar, lo usa si aplica al luchador actual
   const sel=(document.getElementById('charSel')||{value:'robot'}).value;
-  if(kind==='volt'){ swapP2(); attachWeapon(p2); }
-  else if(kind===sel){ swapP1(kind); attachWeapon(p1); }
+  const rsel=(document.getElementById('rivalSel')||{value:'volt'}).value;
+  const bk=baseKind(kind);
+  if(bk===rsel){ swapP2(bk); }
+  else if(bk===sel){ swapP1(bk); }
 }
 p1.maxHp=100; p2.maxHp=100; p1.speedMul=1; p2.speedMul=1;
 p1.weapon=WEAPONS.fists;
@@ -683,7 +737,7 @@ document.getElementById('personaSel').onchange=e=>{
   showToast(cfg.label+' · '+cfg.desc);
   p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
 };
-document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;document.getElementById('banner').style.display='none';showToast('VOLT eligió '+p2.weapon.label+' 🎲');};
+document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;document.getElementById('banner').style.display='none';showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');};
 
 function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-f.pos.z); f.mesh.rotation.y=f.facing; }
 function dist(a,b){ return a.pos.distanceTo(b.pos); }
@@ -732,12 +786,12 @@ function tryAttack(f,type){
         f.aerial={victim:target, hits:3, next:.4};
         burst(target.pos.x,.8,target.pos.z,0x38bdf8);
         shakeT=.4; timeScale=.45;   // mini slow-motion en el lanzamiento
-        showToast(target===p1 ? '🚀 ¡VOLT te lanzó al aire!' : '🚀 ¡RIVAL LANZADO! Sigue el combo aéreo');
+        showToast(target===p1 ? '🚀 ¡'+f.name+' te lanzó al aire!' : '🚀 ¡RIVAL LANZADO! Sigue el combo aéreo');
       }
       // Tramposa: a veces esquiva por completo el primer golpe
       if(f===p1 && p2.persona==='tramposa' && Math.random()<0.18){
         p2.pos.x += (Math.random()<.5?-1.2:1.2); clampArena(p2);
-        showToast('¡VOLT te esquivó! 🎲');
+        showToast('¡'+p2.name+' te esquivó! 🎲');
       }
       // Grok también esquiva a veces, pero por caos
       if(f===p1 && p2.persona==='grok' && Math.random()<0.12){
@@ -855,9 +909,9 @@ function endRound(winner){
   shakeT=.6;
   if(winner===p1) wins1++; else wins2++;
   document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
-  const b=document.getElementById('banner'); b.textContent=(winner===p1?`🏆 ¡${p1.name} GANA!`:'🤖 ¡VOLT ROJO GANA!'); b.style.display='block';
+  const b=document.getElementById('banner'); b.textContent=`🏆 ¡${winner.name} GANA!`; b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
-  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;showToast('VOLT eligió '+p2.weapon.label+' 🎲');},2600);
+  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');},2600);
 }
 setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
   if(timeLeft<=0){ endRound(p1.hp>=p2.hp?p1:p2); } } },1000);
@@ -1006,7 +1060,7 @@ function loop(){
   updateLegendaryTimers(dt);
   const comboEl=document.getElementById('combo');
   if(p1.combo>=2) comboEl.textContent='🔥 x'+p1.combo;
-  else if(autoMode && p2.combo>=2) comboEl.textContent='🔥 VOLT x'+p2.combo;
+  else if(autoMode && p2.combo>=2) comboEl.textContent='🔥 '+p2.name+' x'+p2.combo;
   else comboEl.textContent='';
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
   updateWalkAnim(dt);
