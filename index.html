@@ -161,6 +161,15 @@ function buildDeco(kind){
       col.position.set(x,h/2,z); g.add(col);
       const cap=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10), new THREE.MeshStandardMaterial({color:0x1d4ed8, emissive:0x3b82f6, emissiveIntensity:1.2}));
       cap.position.set(x,h+.3,z); g.add(cap);
+      // Público en gradas del Coliseo (portado de rama pelea-coliseo-kiln, estático)
+      const crowdCols=[0xef4444,0xf59e0b,0x22c55e,0x3b82f6,0xa855f7,0xec4899];
+      for(let j=0;j<4;j++){
+        const ca=(i*4+j)/40*Math.PI*2, R=14.5+((i+j)%3)*1.2, Y=3.2+((i+j)%3)*1.1;
+        const p=new THREE.Group(); p.position.set(Math.cos(ca)*R,Y,Math.sin(ca)*R); p.lookAt(0,Y,0);
+        const b=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.22,3,8), new THREE.MeshStandardMaterial({color:crowdCols[(i+j)%crowdCols.length], roughness:.8})); b.position.y=.28; p.add(b);
+        const hd=new THREE.Mesh(new THREE.SphereGeometry(.13,8,8), new THREE.MeshStandardMaterial({color:0xf2c79b, roughness:.7})); hd.position.y=.62; p.add(hd);
+        g.add(p);
+      }
     } else if(kind==='pyramids'){
       m=new THREE.Mesh(new THREE.ConeGeometry(1.5,h+1,4), new THREE.MeshStandardMaterial({color:0xd9b96a, roughness:.9}));
       m.position.set(x,(h+1)/2,z); m.rotation.y=Math.PI/4; g.add(m);
