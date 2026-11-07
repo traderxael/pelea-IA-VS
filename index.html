@@ -152,6 +152,76 @@ for(let i=0;i<10;i++){
   arena.add(col,cap);
 }
 
+// ── Escenario destructible: 4 pilares de piedra dentro de la arena ──────────
+const pillars=[];
+function buildPillars(){
+  const spots=[[-4.8,-2.6],[4.8,-2.6],[-4.8,2.6],[4.8,2.6]];
+  for(const [x,z] of spots){
+    const g=new THREE.Group();
+    const mat=new THREE.MeshStandardMaterial({color:0x9aa3ad, metalness:.25, roughness:.8});
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.4,.5,1.4),mat); base.position.y=.25; base.castShadow=true; g.add(base);
+    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,2.8,8),mat); shaft.position.y=1.9; shaft.castShadow=true; g.add(shaft);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(1.3,.45,1.3),mat); cap.position.y=3.5; cap.castShadow=true; g.add(cap);
+    const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(.24), new THREE.MeshStandardMaterial({color:0x22d3ee, emissive:0x22d3ee, emissiveIntensity:2.2}));
+    crystal.position.y=4.05; g.add(crystal);
+    g.position.set(x,.3,z);
+    arena.add(g);
+    pillars.push({group:g, mat, crystal, x, z, hp:32, maxHp:32, alive:true, wobble:0});
+  }
+}
+buildPillars();
+function resetPillars(){
+  for(const p of pillars){
+    p.hp=p.maxHp; p.alive=true; p.wobble=0;
+    p.group.rotation.set(0,0,0); p.group.position.y=.3;
+    p.mat.color.setHex(0x9aa3ad);
+    if(p.group.parent!==arena) arena.add(p.group);
+    p.group.visible=true;
+  }
+}
+function destroyPillar(p, attacker){
+  p.alive=false;
+  arena.remove(p.group);
+  burst(p.x,2,p.z,0x9aa3ad); burst(p.x,1,p.z,0x22d3ee); burst(p.x,3,p.z,0xfbbf24);
+  shakeT=.55; sfx('slam');
+  showToast('💥 ¡PILAR DESTRUIDO! '+(attacker?'+20⚡':''));
+  if(attacker) attacker.energy=Math.min(100,attacker.energy+20);
+}
+function damagePillars(x,y,z,dmg,attacker){
+  for(const p of pillars){
+    if(!p.alive) continue;
+    const d=Math.hypot(x-p.x, z-p.z);
+    if(d<2.0){
+      p.hp-=dmg; p.wobble=1;
+      burst(p.x,Math.min(y,3),p.z,0xd1d5db);
+      sfx('stone');
+      p.mat.color.setHex(p.hp<20?0x6b7280:0x9aa3ad);
+      if(p.hp<=0) destroyPillar(p,attacker);
+    }
+  }
+}
+function updatePillars(dt){
+  const t=performance.now()*.001;
+  for(const p of pillars){
+    if(!p.alive) continue;
+    p.wobble=Math.max(0,p.wobble-dt*2.5);
+    const tilt=(1-p.hp/p.maxHp)*.14;   // se inclina al dañarse
+    p.group.rotation.z=tilt+Math.sin(t*28)*.07*p.wobble;
+    p.group.rotation.x=Math.cos(t*24)*.05*p.wobble;
+    p.crystal.rotation.y=t*2; p.crystal.position.y=4.05+Math.sin(t*3)*.07;
+    p.crystal.material.emissiveIntensity=1.6+Math.sin(t*4)*.8;
+  }
+}
+function collidePillars(f){
+  for(const p of pillars){
+    if(!p.alive) continue;
+    const dx=f.pos.x-p.x, dz=f.pos.z-p.z, d=Math.hypot(dx,dz);
+    if(d>0.001 && d<1.05){ f.pos.x=p.x+dx/d*1.05; f.pos.z=p.z+dz/d*1.05; }
+  }
+}
+// Hook de pruebas/debug (no afecta el juego)
+window.__pillars=pillars; window.__damagePillars=damagePillars;
+
 function makeRobot(color, accent){
   const g=new THREE.Group();
   const mat=new THREE.MeshStandardMaterial({color, metalness:.8, roughness:.25});
@@ -547,6 +617,7 @@ function sfx(kind){
       case 'combo': tone('square',600,880,.09,.18); break;
       case 'launcher': tone('sine',160,850,.3,.3); noise(.18,900,'bandpass',.15); break;
       case 'slam': tone('sine',120,35,.24,.4); noise(.2,420,'lowpass',.32); break;
+      case 'stone': noise(.08,700,'lowpass',.3); tone('triangle',300,140,.07,.15); break;
       case 'legendary': [523,659,784,1047].forEach((n,i)=>setTimeout(()=>{
         try{
           const o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -737,7 +808,7 @@ document.getElementById('personaSel').onchange=e=>{
   showToast(cfg.label+' · '+cfg.desc);
   p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
 };
-document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;document.getElementById('banner').style.display='none';showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');};
+document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;document.getElementById('banner').style.display='none';resetPillars();showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');};
 
 function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-f.pos.z); f.mesh.rotation.y=f.facing; }
 function dist(a,b){ return a.pos.distanceTo(b.pos); }
@@ -773,6 +844,7 @@ function tryAttack(f,type){
       dmg=Math.round(dmg*w.dmg*comboBonus(f));
       const dealt=target.hit(dmg,f,type==='special'||w.key==='hammer');
       registerHit(f,dealt);
+      damagePillars(target.pos.x,1.5,target.pos.z, dmg*1.4, f); // salpicadura al entorno
       if(dealt>0){
         if(type==='special') sfx('special');
         else if(type==='launcher') sfx('launcher');
@@ -896,7 +968,7 @@ function moveAI(x,z,speed){
   const fwd=new THREE.Vector3(Math.sin(p2.facing),0,Math.cos(p2.facing));
   const right=new THREE.Vector3(fwd.z,0,-fwd.x);
   p2.pos.addScaledVector(fwd,z*speed).addScaledVector(right,x*speed);
-  clampArena(p2);
+  clampArena(p2); collidePillars(p2);
 }
 function clampArena(f){ f.pos.x=THREE.MathUtils.clamp(f.pos.x,-7.5,7.5); f.pos.z=THREE.MathUtils.clamp(f.pos.z,-7.5,7.5); }
 
@@ -911,7 +983,7 @@ function endRound(winner){
   document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
   const b=document.getElementById('banner'); b.textContent=`🏆 ¡${winner.name} GANA!`; b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
-  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');},2600);
+  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;resetPillars();showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');},2600);
 }
 setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
   if(timeLeft<=0){ endRound(p1.hp>=p2.hp?p1:p2); } } },1000);
@@ -941,7 +1013,7 @@ function playerUpdate(dt){
   const fwd=new THREE.Vector3(Math.sin(p1.facing),0,Math.cos(p1.facing));
   const right=new THREE.Vector3(fwd.z,0,-fwd.x);
   p1.pos.addScaledVector(fwd,mz*3.6*p1.speedMul*dt).addScaledVector(right,mx*3.6*p1.speedMul*dt);
-  clampArena(p1);
+  clampArena(p1); collidePillars(p1);
   p1.energy=Math.min(100,p1.energy+dt*3);
   // animación brazos (solo para modelos procedurales — los glTF usan sus clips)
   const u=p1.mesh.userData;
@@ -1017,9 +1089,10 @@ function updateAereo(dt){
       f.air.vy-=15*dt;
       f.pos.y+=f.air.vy*dt;
       f.mesh.rotation.x=THREE.MathUtils.clamp(-f.air.vy*.07,-1.05,.55); // vuelve en el aire
-      if(f.pos.y<=.3){ // aterrizaje: slam con polvo
+      if(f.pos.y<=.3){ // aterrizaje: slam con polvo (puede resquebrajar pilares cercanos)
         f.pos.y=.3; f.mesh.rotation.x=0; f.air=null; f.state='idle';
         burst(f.pos.x,.4,f.pos.z,0x94a3b8); shakeT=.4; sfx('slam');
+        damagePillars(f.pos.x,.4,f.pos.z, 20, null);
       }
     }
     // Regreso suave del atacante tras terminar el combo aéreo
@@ -1039,6 +1112,7 @@ function updateAereo(dt){
         let dmg=Math.round(9*weaponOf(f).dmg*comboBonus(f)*(f===p2?(.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus:1));
         const dealt=v.hit(dmg,f,false);
         registerHit(f,dealt);
+        damagePillars(v.pos.x,v.pos.y,v.pos.z, dmg, f); // el juggle puede romper pilares cercanos
         if(v.air) v.air.vy=Math.max(v.air.vy,3.2); // el juggle lo mantiene volando
         burst(v.pos.x,v.pos.y+.7,v.pos.z,0xfbbf24);
         shakeT=.25; sfx('punch');
@@ -1065,6 +1139,7 @@ function loop(){
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
   updateWalkAnim(dt);
   updateAereo(dt);
+  updatePillars(dt);
   updateKo(dt);
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.userData.life-=dt*1.4; p.position.addScaledVector(p.userData.v,dt); p.userData.v.y-=6*dt;
@@ -1077,11 +1152,21 @@ function loop(){
     pr.userData.life-=dt;
     pr.rotation.x+=dt*8;
     const target = pr.userData.owner===p1 ? p2 : p1;
+    // El plasma también impacta contra los pilares
+    let hitPillar=false;
+    for(const p of pillars){ if(p.alive && Math.hypot(pr.position.x-p.x, pr.position.z-p.z)<0.85 && pr.position.y<4){ hitPillar=true; break; } }
+    if(hitPillar){
+      damagePillars(pr.position.x,pr.position.y,pr.position.z, Math.round(pr.userData.dmg*1.2), pr.userData.owner);
+      burst(pr.position.x,pr.position.y,pr.position.z,0x22d3ee);
+      scene.remove(pr); projectiles.splice(i,1);
+      continue;
+    }
     if(pr.position.distanceTo(target.pos.clone().setY(1.3))<1.05){
       const w=weaponOf(pr.userData.owner);
       let dmg=Math.round(pr.userData.dmg*w.dmg*comboBonus(pr.userData.owner));
       const dealt=target.hit(dmg,pr.userData.owner, pr.userData.dmg>=26);
       registerHit(pr.userData.owner,dealt);
+      damagePillars(pr.position.x,1.4,pr.position.z, dmg, pr.userData.owner);
       sfx('plasma');
       burst(pr.position.x,1.4,pr.position.z,0x22d3ee);
       scene.remove(pr); projectiles.splice(i,1);
