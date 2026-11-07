@@ -106,7 +106,7 @@
     <button class="b1" id="punch">👊</button>
     <button class="b2" id="kick">🦵</button>
     <button class="b4" id="launcher">🚀 AIRE</button>
-    <button class="b3" id="special">⚡ ESPECIAL</button>
+    <button class="b3" id="special">🌀 RASENDAN</button>
   </div>
 </div>
 
@@ -148,6 +148,10 @@ const ARENAS=[
   {name:'GLACIAR DE HIELO', icon:'❄️', bg:0x0a1a2a, floor:0x7fb8cc, ring:0x7dd3fc, crystal:0xa5f3fc, deco:'crystals'},
   {name:'CIUDAD NEÓN', icon:'🌃', bg:0x12041f, floor:0x1e1b3a, ring:0xe879f9, crystal:0xc084fc, deco:'neon'},
   {name:'SELVA ANCESTRAL', icon:'🌿', bg:0x051a0a, floor:0x14532d, ring:0x4ade80, crystal:0x86efac, deco:'trees'},
+  {name:'COLISEO ROMANO', icon:'🏛️', bg:0x87b5d6, floor:0xd9b380, ring:0xdc2626, crystal:0xf59e0b, deco:'roman'},
+  {name:'BASE LUNAR', icon:'🚀', bg:0x030712, floor:0x6b7280, ring:0xe5e7eb, crystal:0xffffff, deco:'space'},
+  {name:'ISLA TROPICAL', icon:'🏝️', bg:0x0e7490, floor:0xfde68a, ring:0x14b8a6, crystal:0x2dd4bf, deco:'island'},
+  {name:'CASTILLO MEDIEVAL', icon:'🏰', bg:0x1c1917, floor:0x78716c, ring:0xf97316, crystal:0xfb923c, deco:'castle'},
 ];
 let arenaIdx=0, decoGroup=null;
 function buildDeco(kind){
@@ -185,6 +189,33 @@ function buildDeco(kind){
       const c=i%2?0xe879f9:0x22d3ee;
       m=new THREE.Mesh(new THREE.BoxGeometry(.7,h,.7), new THREE.MeshStandardMaterial({color:0x111827, emissive:c, emissiveIntensity:1.6}));
       m.position.set(x,h/2,z); g.add(m);
+    } else if(kind==='roman'){
+      const col=new THREE.Mesh(new THREE.CylinderGeometry(.4,.5,h,10), new THREE.MeshStandardMaterial({color:0xcbbfa8, roughness:.85}));
+      col.position.set(x,h/2,z); g.add(col);
+      const banner=new THREE.Mesh(new THREE.PlaneGeometry(.9,1.8), new THREE.MeshStandardMaterial({color:0x991b1b, side:THREE.DoubleSide}));
+      banner.position.set(x*0.92,2.2,z*0.92); banner.lookAt(0,2.2,0); g.add(banner);
+      const crowdCols=[0xef4444,0xf59e0b,0x22c55e,0x3b82f6];
+      const p=new THREE.Group(); p.position.set(x*1.25,3.4,z*1.25); p.lookAt(0,3.4,0);
+      const b=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.22,3,8), new THREE.MeshStandardMaterial({color:crowdCols[i%4], roughness:.8})); b.position.y=.28; p.add(b); g.add(p);
+    } else if(kind==='space'){
+      m=new THREE.Mesh(new THREE.OctahedronGeometry(.7+Math.random()*.5), new THREE.MeshStandardMaterial({color:0x9ca3af, emissive:0xe5e7eb, emissiveIntensity:.4, roughness:.4}));
+      m.position.set(x,1.2,z); m.rotation.set(Math.random(),Math.random(),0); g.add(m);
+      const star=new THREE.Mesh(new THREE.SphereGeometry(.18,8,8), new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffffff, emissiveIntensity:3}));
+      star.position.set(x,2.4,z); g.add(star);
+    } else if(kind==='island'){
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.28,h*.55,8), new THREE.MeshStandardMaterial({color:0x92400e, roughness:1}));
+      trunk.position.set(x,h*.28,z); trunk.rotation.z=.25; g.add(trunk);
+      const top=new THREE.Mesh(new THREE.ConeGeometry(1.1,1.6,8), new THREE.MeshStandardMaterial({color:0x16a34a, roughness:.9}));
+      top.position.set(x+.4,h*.55+.8,z); g.add(top);
+      const rock=new THREE.Mesh(new THREE.IcosahedronGeometry(.5,0), new THREE.MeshStandardMaterial({color:0x78716c, roughness:1}));
+      rock.position.set(x,0.5,z); g.add(rock);
+    } else if(kind==='castle'){
+      const tw=new THREE.Mesh(new THREE.BoxGeometry(1.2,h,1.2), new THREE.MeshStandardMaterial({color:0x78716c, roughness:.9}));
+      tw.position.set(x,h/2,z); g.add(tw);
+      const roof=new THREE.Mesh(new THREE.ConeGeometry(.9,1.2,4), new THREE.MeshStandardMaterial({color:0x7c2d12, roughness:.8}));
+      roof.position.set(x,h+.6,z); roof.rotation.y=Math.PI/4; g.add(roof);
+      const flame=new THREE.Mesh(new THREE.SphereGeometry(.16,8,8), new THREE.MeshStandardMaterial({color:0xf97316, emissive:0xf97316, emissiveIntensity:2.5}));
+      flame.position.set(x,h+1.4,z); g.add(flame);
     } else { // trees
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.3,h*.6,8), new THREE.MeshStandardMaterial({color:0x4a2c14, roughness:1}));
       trunk.position.set(x,h*.3,z); g.add(trunk);
@@ -518,7 +549,7 @@ class Fighter{
   }
   cfg(){ return this.personaCfg[this.persona] || this.personaCfg.openai; }
   reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; this.hurtTilt=0; this.kb.set(0,0,0); this.mesh.rotation.x=0; this.air=null; this.aerial=null; this.shieldT=0; if(this.shieldMesh){ this.shieldMesh.parent && this.shieldMesh.parent.remove(this.shieldMesh); this.shieldMesh=null; } }
-  hit(dmg, attacker, heavy){
+  hit(dmg, attacker, heavy, noKb){
     if(this.shieldT>0){
       this.flash(0x60a5fa); showToast('🛡️ ¡ESCUDO!'); this.energy=Math.min(100,this.energy+2); sfx('block'); return 0;
     }
@@ -528,9 +559,9 @@ class Fighter{
     }
     this.hp=Math.max(0,this.hp-dmg); this.hurt=.25; this.memory.hitsTaken++;
     this.hurtTilt=1;
-    if(attacker){
+    if(attacker && !noKb){
       const d=this.pos.clone().sub(attacker.pos); d.y=0; d.normalize();
-      this.kb.copy(d.multiplyScalar(heavy?6.5:4.5));   // empujón hacia atrás
+      this.kb.copy(d.multiplyScalar(heavy?6.5:4.5));   // empujón hacia atrás (Rasendan: noKb = sin empuje)
     }
     if(heavy) shakeT=.55;
     this.flash(0xff4444); burst(this.pos.x,1.5,this.pos.z,0xffaa00);
@@ -726,13 +757,27 @@ const projGeo=new THREE.SphereGeometry(.13,8,8);
 const plasmaMat=new THREE.MeshStandardMaterial({color:0x22d3ee, emissive:0x22d3ee, emissiveIntensity:3});
 function spawnPlasma(f,type){
   const dir=new THREE.Vector3(Math.sin(f.facing),0,Math.cos(f.facing));
-  const m=new THREE.Mesh(projGeo,plasmaMat.clone());
-  if(type==='special') m.scale.setScalar(1.8);
+  const isRasendan = type==='special';
+  let m;
+  if(isRasendan){
+    // Rasendan (MIGHTREYA): vórtice girando en la palma -> proyectil sin knockback
+    m=new THREE.Group();
+    const core=new THREE.Mesh(projGeo, new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x67e8f9, emissiveIntensity:3}));
+    core.scale.setScalar(1.6); m.add(core);
+    const ring1=new THREE.Mesh(new THREE.TorusGeometry(.32,.07,8,24), new THREE.MeshStandardMaterial({color:0x22d3ee, emissive:0x22d3ee, emissiveIntensity:2.5}));
+    ring1.rotation.x=Math.PI/2; m.add(ring1); m.userData.ring1=ring1;
+    const ring2=new THREE.Mesh(new THREE.TorusGeometry(.42,.05,8,24), new THREE.MeshStandardMaterial({color:0xa78bfa, emissive:0xa78bfa, emissiveIntensity:2}));
+    ring2.rotation.y=Math.PI/2; m.add(ring2); m.userData.ring2=ring2;
+  } else {
+    m=new THREE.Mesh(projGeo,plasmaMat.clone());
+  }
   m.position.copy(f.pos); m.position.y=1.35;
   m.position.addScaledVector(dir,.7);
-  m.userData={v:dir.multiplyScalar(14), dmg:type==='special'?26:(type==='kick'?17:12), owner:f, life:2.5};
+  const _r1=m.userData.ring1, _r2=m.userData.ring2;
+  m.userData={v:dir.multiplyScalar(isRasendan?10:14), dmg:isRasendan?20:(type==='kick'?17:12), owner:f, life:2.5, rasendan:isRasendan, ring1:_r1, ring2:_r2};
   scene.add(m); projectiles.push(m);
-  burst(f.pos.x+dir.x*.8,1.4,f.pos.z+dir.z*.8,0x22d3ee);
+  burst(f.pos.x+dir.x*.8,1.4,f.pos.z+dir.z*.8,isRasendan?0x67e8f9:0x22d3ee);
+  if(isRasendan) showToast('🌀 ¡RASENDAN!');
 }
 
 // ── Sonidos (Web Audio API, sin archivos externos) ────────────────────────
@@ -988,8 +1033,9 @@ function tryAttack(f,type){
     const a=f.mesh.userData.mixer.clipAction(f.mesh.userData.attackClip);
     a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play();
   }
-  f.cooldown = (type==='special'?.9:(type==='launcher'?.7:(type==='kick'?.55:.38))) * w.cd;
+  f.cooldown = (type==='special'?.5:(type==='launcher'?.7:(type==='kick'?.55:.38))) * w.cd;
   if(type==='special') f.energy-=35;
+  if(type==='special') showToast('🌀 RASENDAN');
   const target = f===p1?p2:p1;
   // Adaptive memory: tracks opponent patterns
   if(f===p1){
@@ -1004,11 +1050,12 @@ function tryAttack(f,type){
   setTimeout(()=>{
     if(roundOver) return;
     if(dist(f,target)<w.range){
-      let dmg = type==='special'?22:(type==='launcher'?11:(type==='kick'?14:9));
+      let dmg = type==='special'?20:(type==='launcher'?11:(type==='kick'?14:9)); // Rasendan: 20, sin knockback para seguir combo
       if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
       dmg=Math.round(dmg*w.dmg*comboBonus(f));
-      const dealt=target.hit(dmg,f,type==='special'||w.key==='hammer');
+      const dealt=target.hit(dmg,f, w.key==='hammer' && type!=='special', type==='special');
       registerHit(f,dealt);
+      if(type==='special' && dealt>0){ f.cooldown=Math.min(f.cooldown,.3); showToast('🌀 ¡RASENDAN! Sigue el combo'); }
       damagePillars(target.pos.x,1.5,target.pos.z, dmg*1.4, f); // salpicadura al entorno
       if(dealt>0){
         if(type==='special') sfx('special');
@@ -1324,6 +1371,7 @@ function loop(){
     pr.position.addScaledVector(pr.userData.v,dt);
     pr.userData.life-=dt;
     pr.rotation.x+=dt*8;
+    if(pr.userData.rasendan){ if(pr.userData.ring1){pr.userData.ring1.rotation.z+=dt*14; pr.userData.ring1.rotation.x+=dt*6;} if(pr.userData.ring2){pr.userData.ring2.rotation.z-=dt*10;} if(Math.random()<.4) burst(pr.position.x,pr.position.y,pr.position.z,0x67e8f9); }
     const target = pr.userData.owner===p1 ? p2 : p1;
     // El plasma también impacta contra los pilares
     let hitPillar=false;
@@ -1337,8 +1385,9 @@ function loop(){
     if(pr.position.distanceTo(target.pos.clone().setY(1.3))<1.05){
       const w=weaponOf(pr.userData.owner);
       let dmg=Math.round(pr.userData.dmg*w.dmg*comboBonus(pr.userData.owner));
-      const dealt=target.hit(dmg,pr.userData.owner, pr.userData.dmg>=26);
+      const dealt=target.hit(dmg,pr.userData.owner, false, pr.userData.rasendan);
       registerHit(pr.userData.owner,dealt);
+      if(pr.userData.rasendan && dealt>0){ pr.userData.owner.cooldown=Math.min(pr.userData.owner.cooldown,.25); showToast('🌀 ¡RASENDAN! Sigue el combo'); }
       damagePillars(pr.position.x,1.4,pr.position.z, dmg, pr.userData.owner);
       sfx('plasma');
       burst(pr.position.x,1.4,pr.position.z,0x22d3ee);
