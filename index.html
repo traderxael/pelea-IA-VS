@@ -58,6 +58,7 @@
     <div id="timer">99</div>
     <div class="tag">RONDA</div>
     <div id="wins" class="tag">0 - 0</div>
+    <div id="arenaTag" class="tag">🏛️ COLISEO ANTIGUO</div>
   </div>
   <div class="card" style="text-align:right">
     <div class="name"><span id="rivalName">🔴 VOLT ROJO</span> <span class="tag" id="personaTag">🤖 OPENAI</span></div>
@@ -139,14 +140,62 @@ const floor = new THREE.Mesh(new THREE.CylinderGeometry(9,9,.6,48), new THREE.Me
 floor.receiveShadow=true; arena.add(floor);
 const ring = new THREE.Mesh(new THREE.RingGeometry(7.6,8.6,48), new THREE.MeshBasicMaterial({color:0x38bdf8, side:THREE.DoubleSide}));
 ring.rotation.x=-Math.PI/2; ring.position.y=.32; arena.add(ring);
-for(let i=0;i<10;i++){
-  const h = 1.6+Math.random()*2.4;
-  const col = new THREE.Mesh(new THREE.CylinderGeometry(.32,.42,h,10), new THREE.MeshStandardMaterial({color:0x0f172a, metalness:.7, roughness:.35}));
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(.34,12,10), new THREE.MeshStandardMaterial({color:0x1d4ed8, emissive:0x3b82f6, emissiveIntensity:1.2}));
-  const a=i/10*Math.PI*2;
-  col.position.set(Math.cos(a)*11,h/2,Math.sin(a)*11);
-  cap.position.set(Math.cos(a)*11,h+.3,Math.sin(a)*11);
-  arena.add(col,cap);
+// ── Diseños de arena por ronda (rota cada ronda) ────────────────────────────
+const ARENAS=[
+  {name:'COLISEO ANTIGUO', icon:'🏛️', bg:0x0a0e1a, floor:0x182544, ring:0x38bdf8, crystal:0x22d3ee, deco:'columns'},
+  {name:'DESIERTO DE PIRÁMIDES', icon:'🏜️', bg:0x2a1a05, floor:0xc2a35c, ring:0xf59e0b, crystal:0xfbbf24, deco:'pyramids'},
+  {name:'VOLCÁN EN ERUPCIÓN', icon:'🌋', bg:0x1a0505, floor:0x3a1210, ring:0xff4500, crystal:0xff6600, deco:'rocks'},
+  {name:'GLACIAR DE HIELO', icon:'❄️', bg:0x0a1a2a, floor:0x7fb8cc, ring:0x7dd3fc, crystal:0xa5f3fc, deco:'crystals'},
+  {name:'CIUDAD NEÓN', icon:'🌃', bg:0x12041f, floor:0x1e1b3a, ring:0xe879f9, crystal:0xc084fc, deco:'neon'},
+  {name:'SELVA ANCESTRAL', icon:'🌿', bg:0x051a0a, floor:0x14532d, ring:0x4ade80, crystal:0x86efac, deco:'trees'},
+];
+let arenaIdx=0, decoGroup=null;
+function buildDeco(kind){
+  const g=new THREE.Group();
+  for(let i=0;i<10;i++){
+    const a=i/10*Math.PI*2, x=Math.cos(a)*11, z=Math.sin(a)*11;
+    const h=1.6+Math.random()*2.4;
+    let m;
+    if(kind==='columns'){
+      const col=new THREE.Mesh(new THREE.CylinderGeometry(.32,.42,h,10), new THREE.MeshStandardMaterial({color:0x0f172a, metalness:.7, roughness:.35}));
+      col.position.set(x,h/2,z); g.add(col);
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10), new THREE.MeshStandardMaterial({color:0x1d4ed8, emissive:0x3b82f6, emissiveIntensity:1.2}));
+      cap.position.set(x,h+.3,z); g.add(cap);
+    } else if(kind==='pyramids'){
+      m=new THREE.Mesh(new THREE.ConeGeometry(1.5,h+1,4), new THREE.MeshStandardMaterial({color:0xd9b96a, roughness:.9}));
+      m.position.set(x,(h+1)/2,z); m.rotation.y=Math.PI/4; g.add(m);
+    } else if(kind==='rocks'){
+      m=new THREE.Mesh(new THREE.IcosahedronGeometry(1+Math.random()*.8,0), new THREE.MeshStandardMaterial({color:0x292524, roughness:1}));
+      m.position.set(x,1,z); g.add(m);
+      const ember=new THREE.Mesh(new THREE.SphereGeometry(.22,8,8), new THREE.MeshStandardMaterial({color:0xff6600, emissive:0xff4500, emissiveIntensity:3}));
+      ember.position.set(x,2.2,z); g.add(ember);
+    } else if(kind==='crystals'){
+      m=new THREE.Mesh(new THREE.ConeGeometry(.6,h+1.4,6), new THREE.MeshStandardMaterial({color:0xbae6fd, emissive:0x38bdf8, emissiveIntensity:.7, roughness:.2}));
+      m.position.set(x,(h+1.4)/2,z); g.add(m);
+    } else if(kind==='neon'){
+      const c=i%2?0xe879f9:0x22d3ee;
+      m=new THREE.Mesh(new THREE.BoxGeometry(.7,h,.7), new THREE.MeshStandardMaterial({color:0x111827, emissive:c, emissiveIntensity:1.6}));
+      m.position.set(x,h/2,z); g.add(m);
+    } else { // trees
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.3,h*.6,8), new THREE.MeshStandardMaterial({color:0x4a2c14, roughness:1}));
+      trunk.position.set(x,h*.3,z); g.add(trunk);
+      const top=new THREE.Mesh(new THREE.SphereGeometry(1+Math.random()*.5,10,8), new THREE.MeshStandardMaterial({color:0x15803d, roughness:1}));
+      top.position.set(x,h*.6+.8,z); g.add(top);
+    }
+  }
+  return g;
+}
+function applyArena(i){
+  const A=ARENAS[i%ARENAS.length]; arenaIdx=i%ARENAS.length;
+  scene.background.set(A.bg); scene.fog.color.set(A.bg);
+  floor.material.color.set(A.floor); ring.material.color.set(A.ring);
+  rim.color.set(A.ring);
+  for(const p of pillars){ p.crystal.material.color.set(A.crystal); p.crystal.material.emissive.set(A.crystal); }
+  if(decoGroup) arena.remove(decoGroup);
+  decoGroup=buildDeco(A.deco); arena.add(decoGroup);
+  const tag=document.getElementById('arenaTag');
+  if(tag) tag.textContent=A.icon+' '+A.name;
+  window.__arena=A.name; window.__applyArena=applyArena;
 }
 
 // ── Escenario destructible: 4 pilares de piedra dentro de la arena ──────────
@@ -167,6 +216,7 @@ function buildPillars(){
   }
 }
 buildPillars();
+applyArena(0); // diseño inicial: Coliseo Antiguo
 function resetPillars(){
   for(const p of pillars){
     p.hp=p.maxHp; p.alive=true; p.wobble=0;
@@ -1096,7 +1146,7 @@ function endRound(winner){
   document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
   const b=document.getElementById('banner'); b.textContent=`🏆 ¡${winner.name} GANA!`; b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
-  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;resetPillars();resetPickups();showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');},2600);
+  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;resetPillars();resetPickups();applyArena(arenaIdx+1);showToast(ARENAS[arenaIdx].icon+' ¡Nueva arena: '+ARENAS[arenaIdx].name+'!');},2600);
 }
 setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
   if(timeLeft<=0){ endRound(p1.hp>=p2.hp?p1:p2); } } },1000);
