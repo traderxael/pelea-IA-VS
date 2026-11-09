@@ -82,6 +82,13 @@
     <option value="ninja">🥷 Ninja</option>
     <option value="samurai">⚔️ Samurai</option>
     <option value="gladiator">🛡️ Gladiador</option>
+    <option value="brute">🦣 Bruto</option>
+    <option value="vamp">🧛 Vampiro</option>
+    <option value="ronin">🥋 Ronin</option>
+    <option value="rhino">🦏 Rhino</option>
+    <option value="panda">🐼 Panda</option>
+    <option value="roja">👩‍🦰 Pelirroja</option>
+    <option value="ogro">👹 Ogro</option>
   </select>
   <select id="rivalSel" title="Tu rival (IA)">
     <option value="volt">🔴 Volt</option>
@@ -90,6 +97,13 @@
     <option value="ninja">🥷 Ninja</option>
     <option value="samurai">⚔️ Samurai</option>
     <option value="gladiator">🛡️ Gladiador</option>
+    <option value="brute">🦣 Bruto</option>
+    <option value="vamp">🧛 Vampiro</option>
+    <option value="ronin">🥋 Ronin</option>
+    <option value="rhino">🦏 Rhino</option>
+    <option value="panda">🐼 Panda</option>
+    <option value="roja">👩‍🦰 Pelirroja</option>
+    <option value="ogro">👹 Ogro</option>
   </select>
   <select id="personaSel" title="Personalidad de la IA rival">
     <option value="openai">🤖 OpenAI</option>
@@ -524,6 +538,164 @@ function makeSoldier(color, accent){
   return g;
 }
 
+// ── Peleadores rescatados de la rama kiln (respaldo procedural si no hay GLB) ──
+function makeBrute(color, accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0x93c5fd, metalness:.1, roughness:.55});
+  const dark=new THREE.MeshStandardMaterial({color:0x1e293b, metalness:.4, roughness:.5});
+  const hide=new THREE.MeshStandardMaterial({color:0x334155, metalness:.2, roughness:.7});
+  const glow=new THREE.MeshStandardMaterial({color:accent, emissive:accent, emissiveIntensity:1.6});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.58,.6,6,16),skin); torso.position.y=1.32; torso.castShadow=true; g.add(torso);
+  const belt=new THREE.Mesh(new THREE.CylinderGeometry(.62,.66,.28,14),dark); belt.position.y=1.05; g.add(belt);
+  const head=new THREE.Group(); head.position.y=2.05; g.add(head);
+  const skull=new THREE.Mesh(new THREE.SphereGeometry(.32,16,14),skin); head.add(skull);
+  const hornL=new THREE.Mesh(new THREE.ConeGeometry(.09,.32,8),hide); hornL.position.set(-.3,.2,0); hornL.rotation.z=.7; head.add(hornL);
+  const hornR=hornL.clone(); hornR.position.x=.3; hornR.rotation.z=-.7; head.add(hornR);
+  const eyes=new THREE.Mesh(new THREE.BoxGeometry(.3,.06,.04),glow); eyes.position.set(0,.02,.3); head.add(eyes);
+  const armL=new THREE.Group(); armL.position.set(-.75,1.6,0); g.add(armL);
+  const armR=new THREE.Group(); armR.position.set(.75,1.6,0); g.add(armR);
+  for(const arm of [armL,armR]){
+    const a=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.3,4,10),skin); a.position.y=-.3; arm.add(a);
+    const f=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),dark); f.position.y=-.6; arm.add(f);
+  }
+  const padL=new THREE.Mesh(new THREE.SphereGeometry(.24,12,10),hide); padL.position.set(-.75,1.6,0); g.add(padL);
+  const padR=padL.clone(); padR.position.x=.75; g.add(padR);
+  const legL=new THREE.Group(); legL.position.set(-.32,.95,0); g.add(legL);
+  const legR=new THREE.Group(); legR.position.set(.32,.95,0); g.add(legR);
+  for(const leg of [legL,legR]){
+    const t=new THREE.Mesh(new THREE.CapsuleGeometry(.18,.3,4,10),dark); t.position.y=-.3; leg.add(t);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),hide); b.scale.set(1,.5,1.4); b.position.set(0,-.62,.08); leg.add(b);
+  }
+  g.userData={armL,armR,legL,legR,head,torso};
+  return g;
+}
+function _limbs(g,mat,skin,dark,armY,legY){
+  const armL=new THREE.Group(); armL.position.set(-.6,armY,0); g.add(armL);
+  const armR=new THREE.Group(); armR.position.set(.6,armY,0); g.add(armR);
+  for(const arm of [armL,armR]){
+    const a=new THREE.Mesh(new THREE.CapsuleGeometry(.13,.24,4,10),mat); a.position.y=-.26; arm.add(a);
+    const f=new THREE.Mesh(new THREE.SphereGeometry(.15,10,8),skin); f.position.y=-.55; arm.add(f);
+  }
+  const legL=new THREE.Group(); legL.position.set(-.26,legY,0); g.add(legL);
+  const legR=new THREE.Group(); legR.position.set(.26,legY,0); g.add(legR);
+  for(const leg of [legL,legR]){
+    const t=new THREE.Mesh(new THREE.CapsuleGeometry(.14,.28,4,10),dark); t.position.y=-.3; leg.add(t);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),dark); b.scale.set(1,.5,1.4); b.position.set(0,-.62,.08); leg.add(b);
+  }
+  return {armL,armR,legL,legR};
+}
+function makeVamp(color,accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0xf5e6d3,roughness:.6});
+  const suit=new THREE.MeshStandardMaterial({color:0x1f2430,roughness:.5,metalness:.3});
+  const red=new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.5});
+  const glow=new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:1.8});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.44,.5,6,14),suit); torso.position.y=1.3; torso.castShadow=true; g.add(torso);
+  const trim=new THREE.Mesh(new THREE.CylinderGeometry(.48,.5,.5,14),red); trim.position.y=1.35; g.add(trim);
+  const head=new THREE.Group(); head.position.y=2.02; g.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.26,16,14),skin));
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.27,16,14,0,Math.PI*2,0,Math.PI*.55),suit); head.add(hair);
+  const stripe=new THREE.Mesh(new THREE.BoxGeometry(.05,.18,.05),skin); stripe.position.set(.08,.32,0); head.add(stripe);
+  const eyes=new THREE.Mesh(new THREE.BoxGeometry(.22,.05,.04),glow); eyes.position.set(0,.03,.24); head.add(eyes);
+  const L=_limbs(g,suit,skin,suit,1.58,.92);
+  const blaster=new THREE.Group(); blaster.position.set(0,-.62,.15); L.armR.add(blaster);
+  const bb=new THREE.Mesh(new THREE.BoxGeometry(.1,.28,.18),suit); blaster.add(bb);
+  const tip=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.2,8),glow); tip.rotation.x=Math.PI/2; tip.position.z=.18; blaster.add(tip);
+  g.userData={...L,head,torso}; return g;
+}
+function makeRonin(color,accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0xf2c79b,roughness:.7});
+  const black=new THREE.MeshStandardMaterial({color:0x1c1917,roughness:.6});
+  const gold=new THREE.MeshStandardMaterial({color:0xd97706,metalness:.6,roughness:.4});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.44,.5,6,14),black); torso.position.y=1.3; torso.castShadow=true; g.add(torso);
+  const belt=new THREE.Mesh(new THREE.CylinderGeometry(.5,.54,.24,14),gold); belt.position.y=1.08; g.add(belt);
+  const head=new THREE.Group(); head.position.y=2.0; g.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.25,16,14),skin));
+  const knot=new THREE.Mesh(new THREE.SphereGeometry(.07,8,8),black); knot.position.set(0,.32,0); head.add(knot);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(.04,.05,.22,8),black); top.position.set(0,.42,0); head.add(top);
+  const L=_limbs(g,black,skin,black,1.56,.9);
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(.28,.22,.06),gold); plate.position.set(.55,1.35,.25); g.add(plate);
+  const plate2=plate.clone(); plate2.position.set(-.55,1.35,.25); g.add(plate2);
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(.04,.5,.08),gold); blade.position.set(0,-.8,.15); blade.rotation.x=1.2; L.armR.add(blade);
+  g.userData={...L,head,torso}; return g;
+}
+function makeRhino(color,accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0x60a5fa,roughness:.55});
+  const dark=new THREE.MeshStandardMaterial({color:0x111827,roughness:.5});
+  const orange=new THREE.MeshStandardMaterial({color:0xf97316,roughness:.5});
+  const steel=new THREE.MeshStandardMaterial({color:0x94a3b8,metalness:.8,roughness:.3});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.58,.55,6,16),skin); torso.position.y=1.32; torso.castShadow=true; g.add(torso);
+  const vest=new THREE.Mesh(new THREE.CylinderGeometry(.62,.64,.5,14),dark); vest.position.y=1.4; g.add(vest);
+  const star=new THREE.Mesh(new THREE.BoxGeometry(.2,.2,.05),orange); star.position.set(0,1.45,.45); g.add(star);
+  const head=new THREE.Group(); head.position.y=2.08; g.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.3,16,14),skin));
+  const horn=new THREE.Mesh(new THREE.ConeGeometry(.1,.45,8),steel); horn.position.set(0,.42,.05); horn.rotation.x=-.4; head.add(horn);
+  const helmet=new THREE.Mesh(new THREE.SphereGeometry(.32,16,14,0,Math.PI*2,0,Math.PI*.5),dark); head.add(helmet);
+  const L=_limbs(g,skin,skin,dark,1.62,.95);
+  const pad=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.3,10),steel); pad.position.set(.68,1.35,0); pad.rotation.z=1.4; g.add(pad);
+  const glove=new THREE.Mesh(new THREE.SphereGeometry(.24,12,10),dark); glove.position.set(0,-.6,0); L.armR.add(glove);
+  g.userData={...L,head,torso}; return g;
+}
+function makePanda(color,accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0x93c5fd,roughness:.6});
+  const white=new THREE.MeshStandardMaterial({color:0xf8fafc,roughness:.6});
+  const orange=new THREE.MeshStandardMaterial({color:0xf97316,roughness:.6});
+  const dark=new THREE.MeshStandardMaterial({color:0x1e293b,roughness:.5});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.62,.5,6,16),white); torso.position.y=1.25; torso.castShadow=true; g.add(torso);
+  const stripe=new THREE.Mesh(new THREE.CylinderGeometry(.63,.63,.14,14),skin); stripe.position.y=1.35; g.add(stripe);
+  const belly=new THREE.Mesh(new THREE.SphereGeometry(.42,14,12),white); belly.position.set(0,1.1,.25); belly.scale.set(1.1,.9,.7); g.add(belly);
+  const scarf=new THREE.Mesh(new THREE.TorusGeometry(.28,.09,8,20),orange); scarf.rotation.x=Math.PI/2; scarf.position.y=1.78; g.add(scarf);
+  const head=new THREE.Group(); head.position.y=2.0; g.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.3,16,14),white));
+  const earL=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),dark); earL.position.set(-.25,.22,0); head.add(earL);
+  const earR=earL.clone(); earR.position.x=.25; head.add(earR);
+  const snout=new THREE.Mesh(new THREE.SphereGeometry(.16,12,10),skin); snout.position.set(0,-.05,.22); head.add(snout);
+  const L=_limbs(g,white,skin,dark,1.55,.9);
+  const gun=new THREE.Group(); gun.position.set(0,-.62,.2); L.armR.add(gun);
+  const gb=new THREE.Mesh(new THREE.BoxGeometry(.16,.3,.2),dark); gun.add(gb);
+  const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.3,8),orange); barrel.rotation.x=Math.PI/2; barrel.position.z=.22; gun.add(barrel);
+  g.userData={...L,head,torso}; return g;
+}
+function makeRoja(color,accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0xffd9b3,roughness:.6});
+  const green=new THREE.MeshStandardMaterial({color:0x16a34a,roughness:.5});
+  const grey=new THREE.MeshStandardMaterial({color:0x6b7280,roughness:.6});
+  const red=new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.5});
+  const glow=new THREE.MeshStandardMaterial({color:0x22c55e,emissive:0x22c55e,emissiveIntensity:1.5});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.4,.48,6,14),green); torso.position.y=1.3; torso.castShadow=true; g.add(torso);
+  const head=new THREE.Group(); head.position.y=2.0; g.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.25,16,14),skin));
+  const pony=new THREE.Mesh(new THREE.CapsuleGeometry(.1,.35,4,10),red); pony.position.set(0,.35,-.18); pony.rotation.x=.6; head.add(pony);
+  const L=_limbs(g,green,skin,grey,1.56,.9);
+  const blaster=new THREE.Group(); blaster.position.set(0,-.62,.15); L.armR.add(blaster);
+  const bb=new THREE.Mesh(new THREE.BoxGeometry(.1,.3,.18),grey); blaster.add(bb);
+  const tip=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.22,8),glow); tip.rotation.x=Math.PI/2; tip.position.z=.18; blaster.add(tip);
+  g.userData={...L,head,torso}; return g;
+}
+function makeOgro(color,accent){
+  const g=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({color:0x86efac,roughness:.55});
+  const dark=new THREE.MeshStandardMaterial({color:0x1f2937,roughness:.5});
+  const red=new THREE.MeshStandardMaterial({color:0xb91c1c,roughness:.5});
+  const glow=new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:1.4});
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.6,.55,6,16),dark); torso.position.y=1.32; torso.castShadow=true; g.add(torso);
+  const vest=new THREE.Mesh(new THREE.CylinderGeometry(.64,.66,.5,14),red); vest.position.y=1.4; g.add(vest);
+  const head=new THREE.Group(); head.position.y=2.08; g.add(head);
+  head.add(new THREE.Mesh(new THREE.SphereGeometry(.32,16,14),skin));
+  const mohawk=new THREE.Mesh(new THREE.BoxGeometry(.08,.25,.4),dark); mohawk.position.set(0,.35,0); head.add(mohawk);
+  const eyes=new THREE.Mesh(new THREE.BoxGeometry(.3,.06,.04),glow); eyes.position.set(0,.02,.3); head.add(eyes);
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(.2,.04,.04),dark); mouth.position.set(0,-.14,.3); head.add(mouth);
+  const L=_limbs(g,skin,skin,dark,1.62,.95);
+  const fist=new THREE.Mesh(new THREE.SphereGeometry(.26,12,10),dark); fist.position.set(0,-.62,0); L.armR.add(fist);
+  const fistL=fist.clone(); fistL.position.set(0,-.62,0); L.armL.add(fistL);
+  g.userData={...L,head,torso}; return g;
+}
+
+
 // Estado global de animaciones de impacto/KO
 let shakeT=0, koState=null;
 // Slow-motion cinematográfico (KO y lanzamientos aéreos): 1 = tiempo normal
@@ -582,7 +754,7 @@ class Fighter{
 // Si existe assets/models/<kind>.glb lo usa con sus animaciones (Idle/Attack);
 // si no, usa el modelo procedural de arriba. Sin .glb → respaldo automático.
 const mixers=[];
-const gltfPreloaded={robot:null, soldier:null, volt:null, ninja:null, samurai:null, gladiator:null};
+const gltfPreloaded={robot:null, soldier:null, volt:null, ninja:null, samurai:null, gladiator:null, brute:null, vamp:null, ronin:null, rhino:null, panda:null, roja:null, ogro:null};
 const gltfLoader=new GLTFLoader();
 function gltfFindNode(mesh, ...names){
   let found=null;
@@ -627,6 +799,13 @@ preloadGltf('assets/models/volt.glb','volt');
 preloadGltf('assets/models/ninja.glb','ninja');
 preloadGltf('assets/models/samurai.glb','samurai');
 preloadGltf('assets/models/gladiator.glb','gladiator');
+preloadGltf('assets/models/brute.glb','brute');
+preloadGltf('assets/models/vamp.glb','vamp');
+preloadGltf('assets/models/ronin.glb','ronin');
+preloadGltf('assets/models/rhino.glb','rhino');
+preloadGltf('assets/models/panda.glb','panda');
+preloadGltf('assets/models/roja.glb','roja');
+preloadGltf('assets/models/ogro.glb','ogro');
 // Segunda instancia de cada modelo: un GLB con skinning no se puede clonar
 // (comparte el esqueleto), así que cada luchador usa su propia carga.
 preloadGltf('assets/models/titan.glb','robot_b');
@@ -635,6 +814,13 @@ preloadGltf('assets/models/volt.glb','volt_b');
 preloadGltf('assets/models/ninja.glb','ninja_b');
 preloadGltf('assets/models/samurai.glb','samurai_b');
 preloadGltf('assets/models/gladiator.glb','gladiator_b');
+preloadGltf('assets/models/brute.glb','brute_b');
+preloadGltf('assets/models/vamp.glb','vamp_b');
+preloadGltf('assets/models/ronin.glb','ronin_b');
+preloadGltf('assets/models/rhino.glb','rhino_b');
+preloadGltf('assets/models/panda.glb','panda_b');
+preloadGltf('assets/models/roja.glb','roja_b');
+preloadGltf('assets/models/ogro.glb','ogro_b');
 
 const p1mesh=makeRobot(0x2563eb,0x38bdf8); scene.add(p1mesh);
 const p2mesh=makeRobot(0xdc2626,0xff6600); scene.add(p2mesh);
@@ -650,6 +836,13 @@ const CHARS={
   ninja:    {label:'🥷 NINJA SOMBRA',  short:'🥷 NINJA',    hp:75,  speed:1.38, fallback:()=>makeSoldier(0x1e1b4b,0x7c3aed)},
   samurai:  {label:'⚔️ SAMURAI ROJO',  short:'⚔️ SAMURAI',  hp:95,  speed:1.12, fallback:()=>makeRobot(0x991b1b,0xf59e0b)},
   gladiator:{label:'🛡️ GLADIADOR',    short:'🛡️ GLADIADOR',hp:120, speed:0.85, fallback:()=>makeRobot(0xb45309,0xf59e0b)},
+  brute:    {label:'🦣 BRUTO AZUL',    short:'🦣 BRUTO',    hp:140, speed:0.75, fallback:()=>makeBrute(0x1e3a8a,0x38bdf8)},
+  vamp:     {label:'🧛 VAMPIRO',       short:'🧛 VAMPIRO',  hp:95,  speed:1.05, fallback:()=>makeVamp(0x1f2430,0xef4444)},
+  ronin:    {label:'🥋 RONIN',         short:'🥋 RONIN',    hp:85,  speed:1.25, fallback:()=>makeRonin(0x1c1917,0xd97706)},
+  rhino:    {label:'🦏 RHINO',         short:'🦏 RHINO',    hp:130, speed:0.85, fallback:()=>makeRhino(0x60a5fa,0xf97316)},
+  panda:    {label:'🐼 PANDA',         short:'🐼 PANDA',    hp:120, speed:0.90, fallback:()=>makePanda(0x93c5fd,0xf97316)},
+  roja:     {label:'👩‍🦰 PELIRROJA',   short:'👩‍🦰 PELIRROJA',hp:90, speed:1.20, fallback:()=>makeRoja(0x16a34a,0x22c55e)},
+  ogro:     {label:'👹 OGRO',          short:'👹 OGRO',     hp:150, speed:0.80, fallback:()=>makeOgro(0x86efac,0xef4444)},
 };
 // Usa la primera instancia cargada del modelo que no esté en escena
 function baseKind(kind){ return kind.replace(/_b$/,''); }
@@ -674,7 +867,7 @@ function swapP1(kind){
   p1.speedMul=c.speed;
   p1.name=c.label;
   document.getElementById('youName').textContent=c.label;
-  const _pe={robot:'🤖',soldier:'🪖',ninja:'🥷',samurai:'⚔️',gladiator:'🛡️',volt:'🔴'};
+  const _pe={robot:'🤖',soldier:'🪖',ninja:'🥷',samurai:'⚔️',gladiator:'🛡️',volt:'🔴',brute:'🦣',vamp:'🧛',ronin:'🥋',rhino:'🦏',panda:'🐼',roja:'👩‍🦰',ogro:'👹'};
   const _yp=document.getElementById('youPortrait'); if(_yp) _yp.textContent=_pe[kind]||'🤖';
   document.querySelector('#youTag').textContent=c.short+' · TÚ';
   attachWeapon(p1);
@@ -957,7 +1150,7 @@ function swapP2(kind){
   p2.speedMul=c.speed;
   p2.name=c.label;
   document.getElementById('rivalName').textContent=c.label;
-  const _pe2={robot:'🤖',soldier:'🪖',ninja:'🥷',samurai:'⚔️',gladiator:'🛡️',volt:'🔴'};
+  const _pe2={robot:'🤖',soldier:'🪖',ninja:'🥷',samurai:'⚔️',gladiator:'🛡️',volt:'🔴',brute:'🦣',vamp:'🧛',ronin:'🥋',rhino:'🦏',panda:'🐼',roja:'👩‍🦰',ogro:'👹'};
   const _rp=document.getElementById('rivalPortrait'); if(_rp) _rp.textContent=_pe2[kind]||'🔴';
   attachWeapon(p2);
 }
