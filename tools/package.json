@@ -1,0 +1,8 @@
+{
+  "name": "pelea-ia-vs-tools",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
