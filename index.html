@@ -46,6 +46,24 @@
   @keyframes rasendanPulse{0%,100%{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 8px #67e8f9}50%{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 26px #a78bfa,0 0 40px #67e8f9}}
   .b3{animation:rasendanPulse 1.4s infinite;border:2px solid #fff}
   #hint{text-align:center;font-size:12px;opacity:.85;margin-top:4px}
+  /* [MK] overlays de FINISH HIM / victoria */
+  #finishOverlay{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;background:radial-gradient(ellipse at center,rgba(60,0,0,.25),rgba(0,0,0,.72));pointer-events:none}
+  #finishOverlay.on{display:flex}
+  .finishTitle{font-size:56px;font-weight:900;font-style:italic;color:#fbbf24;text-shadow:0 0 24px #ef4444,3px 3px 0 #000;letter-spacing:3px;animation:finishPulse .5s infinite alternate}
+  @keyframes finishPulse{from{transform:scale(1)}to{transform:scale(1.07)}}
+  .finishSeq{display:flex;gap:18px;font-size:44px;margin-top:14px}
+  .finishSeq span{filter:grayscale(1) opacity(.55);transition:filter .1s,transform .1s}
+  .finishSeq span.done{filter:none;transform:scale(1.25)}
+  .finishKeys{margin-top:8px;font-weight:900;font-size:18px;color:#e7e5e4;text-shadow:2px 2px 0 #000;letter-spacing:4px}
+  #finishTimer{margin-top:10px;font-size:30px;font-weight:900;color:#ef4444;text-shadow:2px 2px 0 #000}
+  #victoryOverlay{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:32;background:radial-gradient(ellipse at center,rgba(20,5,40,.55),rgba(0,0,0,.88))}
+  #victoryOverlay.on{display:flex}
+  #victoryFatality{display:none;font-size:64px;font-weight:900;font-style:italic;color:#ef4444;text-shadow:0 0 30px #b91c1c,4px 4px 0 #000;letter-spacing:4px;margin-bottom:8px}
+  #victoryFatality.on{display:block;animation:finishPulse .4s infinite alternate}
+  #victoryTitle{font-size:40px;font-weight:900;color:#fbbf24;text-shadow:3px 3px 0 #000}
+  #victoryName{font-size:22px;font-weight:800;margin-top:6px;color:#e7e5e4;text-shadow:2px 2px 0 #000}
+  #rematchBtn{margin-top:22px;border-radius:10px;padding:14px 34px;font-size:20px;background:linear-gradient(135deg,#b91c1c,#7f1d1d);border:2px solid #fbbf24;color:#fff;box-shadow:0 5px 0 #000,0 0 22px #b91c1c88;cursor:pointer}
+  #rematchBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #000}
   @media(min-width:800px){.controls{height:150px}}
 </style>
 </head>
@@ -62,8 +80,9 @@
   </div>
   <div class="card center">
     <div id="timer">99</div>
-    <div class="tag">RONDA</div>
+    <div class="tag">RONDA <span id="roundNum">1</span></div>
     <div id="wins" class="tag">0 - 0</div>
+    <div id="pips" class="tag"><span id="pips1">○ ○</span> · <span id="pips2">○ ○</span></div>
     <div id="arenaTag" class="tag">🏛️ COLISEO ANTIGUO</div>
   </div>
   <div class="card" style="text-align:right">
@@ -119,6 +138,19 @@
 <div id="combo"></div>
 <div id="banner"></div>
 <div id="toast"></div>
+
+<div id="finishOverlay">
+  <div class="finishTitle">FINISH HIM</div>
+  <div class="finishSeq"><span>👊</span><span>🦵</span><span>🌀</span></div>
+  <div class="finishKeys">J · K · L</div>
+  <div id="finishTimer">3.0</div>
+</div>
+<div id="victoryOverlay">
+  <div id="victoryFatality">FATALITY</div>
+  <div id="victoryTitle">🏆 VICTORIA</div>
+  <div id="victoryName"></div>
+  <button id="rematchBtn">↻ REMATCH</button>
+</div>
 
 <div class="controls">
   <div id="joyBase"><div id="joyKnob"></div></div>
@@ -709,6 +741,10 @@ class Fighter{
     this.state='idle'; this.timer=0; this.cooldown=0; this.hurt=0;
     this.blocking=false; this.attackType=null;
     this.hurtTilt=0; this.kb=new THREE.Vector3(); this.walkPhase=0;
+    // [MK] estado de combate: move activo, ventanas, bloqueo, salto, knockdown
+    this.move=null; this.moveName=null; this.attackT=0; this.attackHit=false;
+    this.blockstun=0; this.invuln=0; this.jump=null; this.dash=null;
+    this.knockdown=0; this.getup=0; this.lastBlocked=false; this._speed=0;
     // Combate aéreo (estilo launcher/juggle): air = víctima en vuelo, aerial = atacante rematando
     this.air=null; this.aerial=null;
     this.legendaryUntil=0; this.prevWeapon=null;
@@ -726,17 +762,26 @@ class Fighter{
     };
   }
   cfg(){ return this.personaCfg[this.persona] || this.personaCfg.openai; }
-  reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; this.hurtTilt=0; this.kb.set(0,0,0); this.mesh.rotation.x=0; this.air=null; this.aerial=null; this.shieldT=0; if(this.shieldMesh){ this.shieldMesh.parent && this.shieldMesh.parent.remove(this.shieldMesh); this.shieldMesh=null; } }
+  reset(x,z){ this.hp=(this.maxHp||100); this.energy=40; this.pos.set(x,.3,z); this.vel.set(0,0,0); this.state='idle'; this.timer=0; this.hurtTilt=0; this.kb.set(0,0,0); this.mesh.rotation.x=0; this.air=null; this.aerial=null; this.shieldT=0; this.move=null; this.moveName=null; this.attackT=0; this.attackHit=false; this.blocking=false; this.blockstun=0; this.invuln=0; this.jump=null; this.dash=null; this.knockdown=0; this.getup=0; this.hurt=0; this.cooldown=0; if(this.shieldMesh){ this.shieldMesh.parent && this.shieldMesh.parent.remove(this.shieldMesh); this.shieldMesh=null; } }
   hit(dmg, attacker, heavy, noKb){
+    this.lastBlocked=false;
+    if(this.invuln>0) return 0;
     if(this.shieldT>0){
       this.flash(0x60a5fa); showToast('🛡️ ¡ESCUDO!'); this.energy=Math.min(100,this.energy+2); sfx('block'); return 0;
     }
-    if(this.blocking && Math.random()<.75){ 
+    if(this.blocking){
+      // [MK] bloqueo determinista: chip 20% + blockstun, sin RNG ni knockback
+      const chip=Math.max(1,Math.round(dmg*.2));
+      this.hp=Math.max(0,this.hp-chip);
+      this.blockstun=.18; this.lastBlocked=true;
       if(attacker) attacker.memory.counters++;
-      this.memory.blocks++; this.flash(0x93c5fd); showToast('¡BLOQUEO!'); this.energy=Math.min(100,this.energy+6); sfx('block'); return 0;
+      this.memory.blocks++; this.flash(0x93c5fd); showToast('🛡️ ¡BLOQUEO!'); this.energy=Math.min(100,this.energy+6); sfx('block');
+      showDmg(this.pos, chip);
+      return chip;
     }
     this.hp=Math.max(0,this.hp-dmg); this.hurt=.25; this.memory.hitsTaken++;
     this.hurtTilt=1;
+    this.move=null; this.blocking=false;   // el impacto interrumpe tu ataque
     if(attacker && !noKb){
       const d=this.pos.clone().sub(attacker.pos); d.y=0; d.normalize();
       this.kb.copy(d.multiplyScalar(heavy?6.5:4.5));   // empujón hacia atrás (Rasendan: noKb = sin empuje)
@@ -1184,9 +1229,20 @@ function showDmg(pos, dmg){
 }
 function showToast(t){ const e=document.getElementById('toast'); e.textContent=t; setTimeout(()=>e.textContent='',700); }
 
-let autoMode=true, roundOver=false;
+let autoMode=true, roundOver=false, debugFreezeAI=false;
 const keys={};
-addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase(); keys[k]=true;
+  if(e.repeat) return;
+  if(matchState==='FINISH'){ if(k==='j'||k==='k'||k==='l') finishInput(k); return; }
+  if(autoMode||roundOver) return;
+  // [MK] ataques por pulsación (no por hold): J,J encadena punch2 vía cancel
+  if(k==='j') tryAttack(p1, p1.move&&p1.moveName==='punch1'?'punch2':'punch');
+  else if(k==='k') tryAttack(p1,'kick');
+  else if(k==='l') tryAttack(p1,'special');
+  else if(k==='i') tryAttack(p1,'launcher');
+  else if(k===' '){ e.preventDefault(); tryJump(p1); }
+});
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 
 const joy={x:0,y:0,active:false,id:null};
@@ -1208,10 +1264,10 @@ function bindBtn(id, fn){
   el.addEventListener('touchstart',e=>{e.preventDefault();fn();},{passive:false});
   el.addEventListener('click',fn);
 }
-bindBtn('punch',()=>tryAttack(p1,'punch'));
-bindBtn('kick',()=>tryAttack(p1,'kick')) ;
+bindBtn('punch',()=>{finishInput('j'); tryAttack(p1,'punch');});
+bindBtn('kick',()=>{finishInput('k'); tryAttack(p1,'kick');}) ;
 bindBtn('launcher',()=>tryAttack(p1,'launcher'));
-bindBtn('special',()=>tryAttack(p1,'special'));
+bindBtn('special',()=>{finishInput('l'); tryAttack(p1,'special');});
 
 document.getElementById('autoBtn').onclick=e=>{autoMode=!autoMode; e.target.textContent=autoMode?'🤖 AUTO: ON':'🎮 MANUAL';};
 document.getElementById('personaSel').onchange=e=>{
@@ -1221,76 +1277,200 @@ document.getElementById('personaSel').onchange=e=>{
   showToast(cfg.label+' · '+cfg.desc);
   p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
 };
-document.getElementById('resetBtn').onclick=()=>{p1.reset(-3,0);p2.reset(3,0);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;document.getElementById('banner').style.display='none';resetPillars();resetPickups();showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');};
+document.getElementById('resetBtn').onclick=()=>{startMatch();showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');};
 
 function faceTo(f, other){ f.facing=Math.atan2(other.pos.x-f.pos.x, other.pos.z-f.pos.z); f.mesh.rotation.y=f.facing; }
 function dist(a,b){ return a.pos.distanceTo(b.pos); }
 
-function tryAttack(f,type){
-  if(roundOver||f.cooldown>0||f.hurt>0||f.air) return;
-  if(type==='special' && f.energy<35){ showToast('Necesitas 35⚡'); return; }
+// ── [MK] Núcleo de combate: MOVES con ventanas activas sincronizadas al loop ──
+// Cada move tiene duración, instante de impacto (hitAt), alcance, daño y cancel.
+// El golpe se resuelve en updateCombat (respeta timeScale) con cono de facing ~70°.
+const MOVES={
+  punch1:  {clip:'Punch1',        dur:.38, hitAt:.16, range:1.9, dmg:7,  kb:1.5, cancel:['punch2','kick'], cancelFrom:.18, cancelTo:.34, sfx:'punch'},
+  punch2:  {clip:'Punch2',        dur:.46, hitAt:.22, range:2.0, dmg:10, kb:3.5, cancel:['kick','special'],cancelFrom:.24, cancelTo:.42, sfx:'punch'},
+  kick:    {clip:'Kick',          dur:.55, hitAt:.26, range:2.3, dmg:13, kb:5,   cancel:['special'],       cancelFrom:.28, cancelTo:.50, sfx:'kick'},
+  launcher:{clip:'Uppercut',      dur:.62, hitAt:.24, range:1.8, dmg:9,  kb:0,   launch:true, sfx:'launcher'},
+  sword:   {clip:'SwordAttack',   dur:.60, hitAt:.28, range:2.1, dmg:11, kb:4,   cancel:['kick'],          cancelFrom:.30, cancelTo:.55, weapon:true, sfx:'sword'},
+  hammer:  {clip:'Hammer_Overhead',dur:.72,hitAt:.36, range:1.9, dmg:16, kb:6.5, heavy:true, weapon:true, sfx:'hammer'},
+};
+function specialMove(f){
+  if(f.kind==='hd_ninja')  return {clip:'Punch2',      dur:.60, hitAt:.30, range:2.2, dmg:18, kb:4, dash:2.5, sfx:'special'};
+  if(f.kind==='hd_soldier')return {clip:'Special_Cast',dur:.55, hitAt:.28, range:0,   dmg:20, projectile:true, sfx:'special'};
+  if(f.kind==='hd_ronin')  return {clip:'SwordAttack', dur:.60, hitAt:.30, range:4.0, dmg:18, kb:3, wave:true, sfx:'special'};
+  return {clip:'Special_Cast', dur:.60, hitAt:.30, range:0, dmg:20, projectile:true, rasendan:true, sfx:'special'}; // legacy: Rasendan
+}
+function resolveMove(f,type){
   const w=weaponOf(f);
-  if(type==='launcher' && w.kind==='ranged'){ /* armas a distancia no lanzan: atacan normal */ type='punch'; }
-  f.state='attack'; f.timer=.32; f.attackType=type;
-  if(f.mesh.userData.attackClip && f.mesh.userData.mixer){
-    const a=f.mesh.userData.mixer.clipAction(f.mesh.userData.attackClip);
-    a.reset(); a.setLoop(THREE.LoopOnce,1); a.clampWhenFinished=true; a.play();
+  let m;
+  if(type==='special') m=specialMove(f);
+  else if(type==='launcher') m=MOVES.launcher;
+  else if(type==='kick') m=MOVES.kick;
+  else if(type==='punch2') m=MOVES.punch2;
+  else {
+    if(w.key==='hammer'||w.key==='mjolnir') m=MOVES.hammer;
+    else if(w.kind==='melee'&&w.key!=='fists') m=MOVES.sword;
+    else if(w.kind==='ranged') m={...MOVES.punch1, projectile:true, clip:'Special_Cast', sfx:'plasma'};
+    else m=MOVES.punch1;
   }
-  f.cooldown = (type==='special'?.5:(type==='launcher'?.7:(type==='kick'?.55:.38))) * w.cd;
-  if(type==='special') f.energy-=35;
-  if(type==='special') showToast('🌀 RASENDAN');
-  const target = f===p1?p2:p1;
-  // Adaptive memory: tracks opponent patterns
-  if(f===p1){
-    if(dist(p1,p2)<3.2) p2.memory.closeAttacks++;
-    else p2.memory.farAttacks++;
-  }
-  // Arma a distancia: dispara un proyectil de plasma
-  if(w.kind==='ranged'){
-    setTimeout(()=>{ if(!roundOver){ spawnPlasma(f,type); sfx(type==='special'?'special':'plasma'); } },120);
+  m={...m};
+  const reach=w.kind==='melee'?(w.range/3.4):1;   // alcance relativo del arma sobre la base MK
+  if(!m.projectile) m.range=(m.range||1.9)*reach;
+  m.dmg=Math.max(1,Math.round((m.dmg||10)*w.dmg));
+  m.heavy=m.heavy||w.key==='hammer'||w.key==='mjolnir';
+  m.weaponKey=w.key;
+  return m;
+}
+function startMove(f,type){
+  const m=resolveMove(f,type);
+  f.move=m; f.moveName=type; f.attackT=0; f.attackHit=false;
+  f.state='attack'; f.timer=m.dur; f.attackType=type; f.blocking=false;
+  if(type==='special'){ f.energy-=35; }
+  const target=f===p1?p2:p1;
+  faceTo(f,target);   // auto-face: en arena libre el ataque mira al rival
+  if(m.dash) f.dash={speed:m.dash/m.hitAt, left:m.dash};
+  playFightAnim(f,m.clip);
+  if(f===p1){ if(dist(p1,p2)<3.2) p2.memory.closeAttacks++; else p2.memory.farAttacks++; }
+}
+function tryAttack(f,type){
+  if(roundOver||f.hurt>0||f.air||f.knockdown>0||f.getup>0||f.blockstun>0) return;
+  if(f.jump) return;   // en salto propio solo el juggle automático golpea
+  if(f.move){
+    // [MK] cancel: encadena si el golpe anterior conectó y estás en la ventana
+    const m=f.move;
+    if(f.attackHit && m.cancel && m.cancel.includes(type) && f.attackT>=m.cancelFrom && f.attackT<=m.cancelTo){
+      startMove(f,type);
+    }
     return;
   }
-  setTimeout(()=>{
-    if(roundOver) return;
-    if(dist(f,target)<w.range){
-      let dmg = type==='special'?20:(type==='launcher'?11:(type==='kick'?14:9)); // Rasendan: 20, sin knockback para seguir combo
-      if(f===p2) dmg=Math.round(dmg*(0.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
-      dmg=Math.round(dmg*w.dmg*comboBonus(f));
-      const dealt=target.hit(dmg,f, w.key==='hammer' && type!=='special', type==='special');
-      registerHit(f,dealt);
-      if(type==='special' && dealt>0){ f.cooldown=Math.min(f.cooldown,.3); showToast('🌀 ¡RASENDAN! Sigue el combo'); }
-      damagePillars(target.pos.x,1.5,target.pos.z, dmg*1.4, f); // salpicadura al entorno
-      if(dealt>0){
-        if(type==='special') sfx('special');
-        else if(type==='launcher') sfx('launcher');
-        else if(type==='kick') sfx('kick');
-        else sfx(w.key==='fists'?'punch':w.key);
-      }
-      if(type==='special') burst(target.pos.x,1.4,target.pos.z,0xa78bfa);
-      // ── LAUNCHER (estilo ENENRA): si el golpe aéreo conecta, el rival sale volando ──
-      if(type==='launcher' && dealt>0 && !target.air && target.hp>0){
-        target.air={vy:6.8}; target.blocking=false; target.state='air';
-        f.aerial={victim:target, hits:3, next:.4};
-        burst(target.pos.x,.8,target.pos.z,0x38bdf8);
-        shakeT=.4; timeScale=.45;   // mini slow-motion en el lanzamiento
-        showToast(target===p1 ? '🚀 ¡'+f.name+' te lanzó al aire!' : '🚀 ¡RIVAL LANZADO! Sigue el combo aéreo');
-      }
-      // Qwen: a veces esquiva por completo el primer golpe (velocidad)
-      if(f===p1 && p2.persona==='qwen' && Math.random()<0.18){
-        p2.pos.x += (Math.random()<.5?-1.2:1.2); clampArena(p2);
-        showToast('¡'+p2.name+' (Qwen) te esquivó! ⚡');
-      }
-      // Grok también esquiva a veces, pero por caos
-      if(f===p1 && p2.persona==='grok' && Math.random()<0.12){
-        p2.pos.x += (Math.random()<.5?-1:1); clampArena(p2);
-        showToast('¡Grok se movió por caos! 🤪');
-      }
-      if(target.hp<=0) endRound(f);
+  if(f.cooldown>0) return;
+  if(type==='special' && f.energy<35){ if(f===p1) showToast('Necesitas 35⚡'); return; }
+  startMove(f,type);
+}
+function tryJump(f){
+  if(roundOver||f.jump||f.air||f.move||f.hurt>0||f.knockdown>0||f.getup>0) return;
+  f.jump={vy:5.5}; f.blocking=false;
+  playFightAnim(f,'JumpStart'); sfx('launcher');
+}
+function knockdown(f){
+  f.move=null; f.state='down'; f.knockdown=.8; f.blocking=false;
+  playFightAnim(f,'Knockdown'); sfx('slam');
+}
+function resolveHit(f,m){
+  const target=f===p1?p2:p1;
+  if(roundOver||target.hp<=0) return;
+  const dir=new THREE.Vector3().subVectors(target.pos,f.pos); dir.y=0;
+  const d=dir.length()||1; dir.divideScalar(d);
+  const fwd=new THREE.Vector3(Math.sin(f.facing),0,Math.cos(f.facing));
+  if(d>m.range || fwd.dot(dir)<=.35 || target.invuln>0) return;   // whiff: fuera de alcance/cono
+  // Qwen/Grok esquivan a veces (solo contra el jugador)
+  if(f===p1 && p2.persona==='qwen' && Math.random()<.18){
+    p2.pos.x+=(Math.random()<.5?-1.2:1.2); clampArena(p2);
+    showToast('¡'+p2.name+' (Qwen) te esquivó! ⚡'); return;
+  }
+  if(f===p1 && p2.persona==='grok' && Math.random()<.12){
+    p2.pos.x+=(Math.random()<.5?-1:1); clampArena(p2);
+    showToast('¡Grok se movió por caos! 🤪'); return;
+  }
+  let dmg=m.dmg;
+  if(f===p2) dmg=Math.round(dmg*(.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus);
+  dmg=Math.max(1,Math.round(dmg*comboBonus(f)));
+  const dealt=target.hit(dmg,f,m.heavy,!!m.rasendan);
+  registerHit(f,target.lastBlocked?0:dealt);
+  damagePillars(target.pos.x,1.5,target.pos.z,dmg*1.4,f);
+  if(dealt>0 && !target.lastBlocked){
+    sfx(m.sfx||'punch');
+    if(m.rasendan||m.wave) burst(target.pos.x,1.4,target.pos.z,0xa78bfa);
+    if(m.launch && !target.air && target.hp>0){
+      target.air={vy:6.8}; target.blocking=false; target.state='air'; target.move=null;
+      f.aerial={victim:target,hits:3,next:.4,t:0};
+      burst(target.pos.x,.8,target.pos.z,0x38bdf8);
+      shakeT=.4; timeScale=.45;
+      showToast(target===p1?'🚀 ¡'+f.name+' te lanzó al aire!':'🚀 ¡RIVAL LANZADO! Sigue el combo aéreo');
+    } else if(m.heavy && !target.air && target.hp>0){
+      knockdown(target);
     }
-  },140);
+    if(m.rasendan){ f.cooldown=Math.min(f.cooldown,.3); showToast('🌀 ¡RASENDAN! Sigue el combo'); }
+  }
+  if(target.hp<=0) endRound(f);
+}
+function updateCombat(dt){
+  for(const f of [p1,p2]){
+    if(f.blockstun>0) f.blockstun-=dt;
+    if(f.invuln>0) f.invuln-=dt;
+    if(f.knockdown>0){
+      f.knockdown-=dt;
+      if(f.knockdown<=0){ f.getup=.7; f.invuln=.75; f.state='getup'; playFightAnim(f,'Getup'); }
+      continue;
+    }
+    if(f.getup>0){ f.getup-=dt; if(f.getup<=0) f.state='idle'; continue; }
+    if(f.jump){
+      f.jump.vy-=14*dt; f.pos.y+=f.jump.vy*dt;
+      if(f.pos.y<=.3){ f.pos.y=.3; f.jump=null; playFightAnim(f,'JumpLand'); burst(f.pos.x,.35,f.pos.z,0x94a3b8); }
+    }
+    if(f.dash){
+      const step=Math.min(f.dash.left,f.dash.speed*dt);
+      f.pos.x+=Math.sin(f.facing)*step; f.pos.z+=Math.cos(f.facing)*step;
+      f.dash.left-=step; clampArena(f); collidePillars(f);
+      if(f.dash.left<=0) f.dash=null;
+    }
+    if(!f.move) continue;
+    const m=f.move;
+    f.attackT+=dt;
+    if(!f.attackHit && f.attackT>=m.hitAt){
+      f.attackHit=true;
+      if(m.projectile){
+        if(!roundOver){ spawnPlasma(f,m.rasendan?'special':'punch'); sfx(m.rasendan?'special':'plasma'); }
+      } else resolveHit(f,m);
+    }
+    if(f.attackT>=m.dur){
+      f.move=null; f.moveName=null; f.state='idle';
+      f.cooldown=Math.max(f.cooldown,.12*weaponOf(f).cd);
+    }
+  }
+}
+// ── [MK/HD] Máquina de estados de animación (clips HD; legacy usa Idle/Attack) ──
+const ATK_CLIPS=['Punch1','Punch2','Kick','Uppercut','SwordAttack','Special_Cast','Hammer_Overhead'];
+const LOOP_CLIPS=['Idle','Idle2','Walk','Run','Block'];
+function playFightAnim(f,name,fade=.12){
+  const u=f.mesh.userData;
+  if(u.hd && u.mixer){
+    const clip=(u.hdClips&&u.hdClips[name])||null;
+    if(!clip) return;
+    const next=u.mixer.clipAction(clip);
+    if(u.animCur===next && next.isRunning()) return;
+    const once=!LOOP_CLIPS.includes(name);
+    next.reset();
+    next.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat, once?1:Infinity);
+    next.clampWhenFinished=once;
+    if(u.animCur && u.animCur!==next) u.animCur.fadeOut(fade);
+    next.fadeIn(fade).play();
+    u.animCur=next;
+    return;
+  }
+  if(u.isGltf && u.mixer){
+    const isAtk=ATK_CLIPS.includes(name);
+    const clip=isAtk?u.attackClip:u.idleClip;
+    if(!clip) return;
+    const a=u.mixer.clipAction(clip);
+    a.reset(); a.setLoop(isAtk?THREE.LoopOnce:THREE.LoopRepeat, isAtk?1:Infinity);
+    a.clampWhenFinished=isAtk; a.play();
+  }
+}
+function updateFightAnim(f){
+  const u=f.mesh.userData;
+  if(!u.hd) return;
+  if(koState && koState.loser===f){ playFightAnim(f,'KO'); return; }
+  if(koState && koState.winner===f){ playFightAnim(f,'Victory'); return; }
+  if(f.move||f.knockdown>0||f.getup>0||f.air) return;
+  if(f.blocking||f.blockstun>0){ playFightAnim(f,'Block'); return; }
+  if(f.jump){ playFightAnim(f,f.jump.vy>1?'JumpStart':'JumpLoop'); return; }
+  if(f._speed>4.2) playFightAnim(f,'Run');
+  else if(f._speed>.5) playFightAnim(f,'Walk');
+  else playFightAnim(f,'Idle');
 }
 
 function adaptiveBrain(dt){
+  if(debugFreezeAI) return;
   // La IA aprende según su personalidad: si el jugador ataca mucho de cerca → sube defensa; si se aleja → persigue más
   const m=p2.memory;
   const cfg=p2.cfg();
@@ -1315,12 +1495,21 @@ function adaptiveBrain(dt){
   }
   m.danger += (p1.state==='attack'?1:0)*dt;
 
-  if(p2.hurt>0||p2.air||p2.aerial||roundOver) return;
+  if(p2.hurt>0||p2.air||p2.aerial||roundOver||p2.knockdown>0||p2.getup>0||p2.blockstun>0) return;
   const d=dist(p1,p2);
   faceTo(p2,p1);
   p2.timer-=dt; p2.cooldown-=dt;
-  if(p2.state==='attack'&&p2.timer>0) return;
+  if(p2.move) return;   // [MK] el move activo se resuelve en updateCombat
   if(p2.state==='attack') p2.state='idle';
+  // [MK] bloqueo reactivo: el rival ataca cerca → cubrirse según defensa aprendida
+  if(p1.move && d<3.2 && Math.random()<learnedDef*.55){
+    p2.blocking=true; p2.state='block'; p2.timer=.35+.3*m.defense;
+    return;
+  }
+  // [MK] anti-aéreo: rival saltando/lanzando → patada o launcher
+  if((p1.jump||p1.air) && d<3 && p2.cooldown<=0 && Math.random()<.5){
+    p2.blocking=false; tryAttack(p2, p1.air?'launcher':'kick'); return;
+  }
 
   // Decisión con memoria + personalidad
   const r=Math.random();
@@ -1394,55 +1583,177 @@ function moveAI(x,z,speed){
 }
 function clampArena(f){ f.pos.x=THREE.MathUtils.clamp(f.pos.x,-7.5,7.5); f.pos.z=THREE.MathUtils.clamp(f.pos.z,-7.5,7.5); }
 
+// ── [MK] Match state: INTRO → FIGHT → KO → (FINISH HIM → FATALITY) → siguiente ronda ──
 let wins1=0,wins2=0,timeLeft=99;
+let matchState='INTRO', roundNum=1, introT=0;
+let finishT=0, finishBuf=[], finishWinner=null, cinematic=null;
+function updateScore(){
+  document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
+  document.getElementById('pips1').textContent=(wins1>=1?'●':'○')+' '+(wins1>=2?'●':'○');
+  document.getElementById('pips2').textContent=(wins2>=1?'●':'○')+' '+(wins2>=2?'●':'○');
+}
+function startRound(rotate){
+  p1.reset(-3,0); p2.reset(3,0);
+  revertLegendary(p1); revertLegendary(p2);
+  p2.weapon=WEAPONS[randomWeaponKey()]; attachWeapon(p2);
+  p1.combo=p2.combo=0; koState=null; cinematic=null;
+  p1.mesh.rotation.x=0; p2.mesh.rotation.x=0;
+  resetPillars(); resetPickups();
+  if(rotate){ applyArena(arenaIdx+1); showToast(ARENAS[arenaIdx].icon+' ¡Nueva arena: '+ARENAS[arenaIdx].name+'!'); }
+  timeLeft=99; document.getElementById('timer').textContent='99';
+  document.getElementById('roundNum').textContent=roundNum;
+  matchState='INTRO'; introT=0; roundOver=true;
+  const b=document.getElementById('banner'); b.textContent='🥋 RONDA '+roundNum; b.style.display='block';
+  playFightAnim(p1,'Idle'); playFightAnim(p2,'Idle');
+}
+function startMatch(){
+  wins1=0; wins2=0; roundNum=1; updateScore();
+  document.getElementById('victoryOverlay').classList.remove('on');
+  document.getElementById('finishOverlay').classList.remove('on');
+  startRound(false);
+}
 function endRound(winner){
-  roundOver=true;
+  if(roundOver) return;
+  roundOver=true; matchState='KO';
   timeScale=.22;  // slow-motion dramático en el KO
   const loser = winner===p1 ? p2 : p1;
   koState={loser, winner, t:0};
   shakeT=.6;
   if(winner===p1) wins1++; else wins2++;
-  document.getElementById('wins').textContent=`${wins1} - ${wins2}`;
-  const b=document.getElementById('banner'); b.textContent=`🏆 ¡${winner.name} GANA!`; b.style.display='block';
+  updateScore();
+  const b=document.getElementById('banner'); b.textContent=`🏆 ¡${winner.name} GANA LA RONDA!`; b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
-  setTimeout(()=>{p1.reset(-3,0);p2.reset(3,0);revertLegendary(p1);revertLegendary(p2);p2.weapon=WEAPONS[randomWeaponKey()];attachWeapon(p2);p1.combo=p2.combo=0;koState=null;p1.mesh.rotation.x=0;p2.mesh.rotation.x=0;roundOver=false;b.style.display='none';timeLeft=99;resetPillars();resetPickups();applyArena(arenaIdx+1);showToast(ARENAS[arenaIdx].icon+' ¡Nueva arena: '+ARENAS[arenaIdx].name+'!');},2600);
+  const matchPoint=(winner===p1?wins1:wins2)>=2;   // best-of-3: FINISH HIM solo en match point
+  setTimeout(()=>{
+    if(matchState!=='KO') return;
+    b.style.display='none';
+    if(matchPoint) enterFinish(winner);
+    else { roundNum++; startRound(true); }
+  }, matchPoint?1400:2600);
 }
-setInterval(()=>{ if(!roundOver){timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
-  if(timeLeft<=0){ endRound(p1.hp>=p2.hp?p1:p2); } } },1000);
+function enterFinish(winner){
+  if(matchState!=='KO') return;
+  matchState='FINISH'; finishWinner=winner; finishT=3.0; finishBuf=[];
+  const loser=winner===p1?p2:p1;
+  document.querySelector('.finishTitle').textContent=loser===p2?'FINISH HIM':'FINISH HER';
+  document.querySelectorAll('.finishSeq span').forEach(s=>s.classList.remove('done'));
+  document.getElementById('finishOverlay').classList.add('on');
+  sfx('special');
+  if(autoMode){
+    // la IA ganadora intenta la fatality (60%) tras 0.8-1.5 s
+    setTimeout(()=>{ if(matchState==='FINISH' && Math.random()<.6) executeFatality(finishWinner); },800+Math.random()*700);
+  }
+}
+function finishInput(k){
+  if(matchState!=='FINISH'||autoMode) return;
+  const seq=['j','k','l'];
+  if(k===seq[finishBuf.length]){
+    finishBuf.push(k);
+    document.querySelectorAll('.finishSeq span')[finishBuf.length-1].classList.add('done');
+    sfx('combo');
+    if(finishBuf.length===seq.length) executeFatality(finishWinner);
+  } else {
+    finishBuf=[];
+    document.querySelectorAll('.finishSeq span').forEach(s=>s.classList.remove('done'));
+  }
+}
+function executeFatality(winner){
+  if(matchState!=='FINISH') return;
+  matchState='FATALITY';
+  document.getElementById('finishOverlay').classList.remove('on');
+  const loser=winner===p1?p2:p1;
+  cinematic={t:0,dur:2.2,winner,loser,struck:false,killed:false};
+  timeScale=.25;
+  faceTo(winner,loser);
+  sfx('launcher');
+}
+function matchEnd(winner,fatality){
+  matchState='MATCH_END'; roundOver=true; cinematic=null; timeScale=1;
+  document.getElementById('banner').style.display='none';
+  document.getElementById('finishOverlay').classList.remove('on');
+  document.getElementById('victoryName').textContent=winner.name+' gana el combate';
+  document.getElementById('victoryFatality').classList.toggle('on',!!fatality);
+  document.getElementById('victoryTitle').textContent=winner===p1?'🏆 ¡VICTORIA!':'💀 DERROTA';
+  document.getElementById('victoryOverlay').classList.add('on');
+  playFightAnim(winner,'Victory');
+}
+function updateMatch(rdt){
+  const b=document.getElementById('banner');
+  if(matchState==='INTRO'){
+    introT+=rdt;
+    if(introT>=.7 && introT<1.4){ b.textContent='⚔️ ¡FIGHT!'; b.style.display='block'; }
+    if(introT>=1.4){ matchState='FIGHT'; roundOver=false; b.style.display='none'; }
+  } else if(matchState==='FINISH'){
+    finishT-=rdt;   // ventana en tiempo real (no escalada por slow-mo)
+    document.getElementById('finishTimer').textContent=Math.max(0,finishT).toFixed(1);
+    if(finishT<=0) matchEnd(finishWinner,false);
+  } else if(matchState==='FATALITY' && cinematic){
+    const c=cinematic; c.t+=rdt;
+    if(!c.struck && c.t>=.9){
+      c.struck=true;
+      playFightAnim(c.winner,'SwordAttack');
+      sfx('sword');
+    }
+    if(!c.killed && c.t>=1.3){
+      c.killed=true;
+      koState={loser:c.loser,winner:c.winner,t:0};
+      burst(c.loser.pos.x,1.4,c.loser.pos.z,0xef4444);
+      burst(c.loser.pos.x,1.9,c.loser.pos.z,0xb91c1c);
+      burst(c.loser.pos.x,.9,c.loser.pos.z,0xef4444);
+      shakeT=.8; sfx('slam'); sfx('hammer');
+      b.textContent='🩸 FATALITY'; b.style.display='block';
+    }
+    if(c.t>=c.dur) matchEnd(c.winner,true);
+  }
+}
+setInterval(()=>{
+  if(matchState!=='FIGHT') return;
+  timeLeft--; document.getElementById('timer').textContent=Math.max(0,timeLeft);
+  if(timeLeft<=0){
+    if(p1.hp===p2.hp){ showToast('⏱️ ¡EMPATE! Se repite la ronda'); startRound(false); }
+    else endRound(p1.hp>p2.hp?p1:p2);
+  }
+},1000);
+document.getElementById('rematchBtn').onclick=()=>startMatch();
 
 function playerUpdate(dt){
   p1.timer-=dt; p1.cooldown-=dt; if(p1.hurt>0)p1.hurt-=dt;
   if(p1.air||p1.aerial) return;   // en el aire no controlas (te lanzaron / combo aéreo)
+  if(p1.knockdown>0||p1.getup>0) return;
   faceTo(p1,p2);
+  // [MK] bloqueo del jugador: Shift/U hold (o botón 🛡️ táctil)
+  const wantBlock=(keys['shift']||keys['u']||p1.touchBlock) && !autoMode;
+  p1.blocking=!!(wantBlock && !p1.move && !p1.jump && p1.hurt<=0 && p1.blockstun<=0);
+  if(p1.blocking) p1.state='block';
   let mx=0,mz=0;
   if(autoMode){
     // Ambos pelean solos cuando AUTO está ON (modo espectador IA vs IA)
-    // Jugador actúa como segunda IA simple
     const d=dist(p1,p2);
     if(d>3) { mz=1; }
-    else if(Math.random()<.03){ // AUTO también lanza aéreos a veces
+    else if(Math.random()<.03){
       tryAttack(p1, Math.random()<.22?'launcher':(Math.random()<.5?'punch':'kick'));
     }
     if(d<2 && Math.random()<.01) mz=-.6;
-  } else {
+  } else if(!p1.move && !p1.blocking && p1.blockstun<=0){
     if(keys['w']||keys['arrowup']) mz+=1; if(keys['s']||keys['arrowdown']) mz-=1;
     if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
     mx+=joy.x; mz+=-joy.y;
-    if(keys['j']) tryAttack(p1,'punch'); if(keys['k']) tryAttack(p1,'kick'); if(keys['l']) tryAttack(p1,'special');
-    if(keys[' ']||keys['i']) tryAttack(p1,'launcher'); // 🚀 lanzamiento aéreo
   }
   const len=Math.hypot(mx,mz); if(len>1){mx/=len;mz/=len;}
   const fwd=new THREE.Vector3(Math.sin(p1.facing),0,Math.cos(p1.facing));
   const right=new THREE.Vector3(fwd.z,0,-fwd.x);
-  p1.pos.addScaledVector(fwd,mz*3.6*p1.speedMul*dt).addScaledVector(right,mx*3.6*p1.speedMul*dt);
+  const spd=3.6*p1.speedMul*(p1.blocking?.35:1);
+  p1.pos.addScaledVector(fwd,mz*spd*dt).addScaledVector(right,mx*spd*dt);
   clampArena(p1); collidePillars(p1);
   p1.energy=Math.min(100,p1.energy+dt*3);
   // animación brazos (solo para modelos procedurales — los glTF usan sus clips)
   const u=p1.mesh.userData;
   if(!u.isGltf){
-    if(p1.state==='attack'&&p1.timer>0){ u.armR.rotation.x=-1.6; if(p1.attackType==='kick') u.legR.rotation.x=-1.2; }
+    if(p1.move){ u.armR.rotation.x=-1.6; if(p1.attackType==='kick') u.legR.rotation.x=-1.2; else u.legR.rotation.x=0; }
     else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
     if(p1.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
+    if(p1.knockdown>0){ p1.mesh.rotation.x=-1.3; }
+    else if(p1.getup>0){ p1.mesh.rotation.x=-1.3*(p1.getup/.7); }
   }
 }
 
@@ -1450,23 +1761,27 @@ function aiAnim(dt){
   p2.timer-=dt; p2.cooldown-=dt; if(p2.hurt>0)p2.hurt-=dt;
   const u=p2.mesh.userData;
   if(!u.isGltf){
-    if(p2.state==='attack'&&p2.timer>0){ u.armR.rotation.x=-1.6; if(p2.attackType==='kick') u.legR.rotation.x=-1.2; }
+    if(p2.move){ u.armR.rotation.x=-1.6; if(p2.attackType==='kick') u.legR.rotation.x=-1.2; else u.legR.rotation.x=0; }
     else { u.armR.rotation.x=0; u.legR.rotation.x=0; }
     if(p2.blocking){ u.armL.rotation.x=-.9; u.armR.rotation.x=-.9; }
+    if(p2.knockdown>0){ p2.mesh.rotation.x=-1.3; }
+    else if(p2.getup>0){ p2.mesh.rotation.x=-1.3*(p2.getup/.7); }
   }
-  if(!p2.air&&!p2.aerial&&p2.pos.y<=.32) p2.mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
-  if(!p1.air&&!p1.aerial&&p1.pos.y<=.32) p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
+  if(!p2.air&&!p2.aerial&&!p2.jump&&p2.pos.y<=.32) p2.mesh.position.y = .3 + Math.sin(performance.now()*.006)*.04;
+  if(!p1.air&&!p1.aerial&&!p1.jump&&p1.pos.y<=.32) p1.mesh.position.y = .3 + Math.sin(performance.now()*.006+2)*.04;
 }
 
 function updateWalkAnim(dt){
   for(const f of [p1,p2]){
     const u=f.mesh.userData;
     const last=f._lastPos||f.pos.clone();
-    const d=f.pos.distanceTo(last);
+    const dx=f.pos.x-last.x, dz=f.pos.z-last.z;
     f._lastPos=f.pos.clone();
-    const speed=d/Math.max(dt,.001);
-    if(f.state==='attack'&&f.timer>0){
-      // en ataque respeta la pose de ataque
+    const speed=Math.hypot(dx,dz)/Math.max(dt,.001);
+    f._speed=speed;   // [HD] selector walk/run en updateFightAnim
+    if(u.isGltf){ updateFightAnim(f); }
+    if(f.move||f.knockdown>0||f.getup>0||f.jump||f.air){
+      // [MK] el clip/pose de ataque, caída o salto manda; no pisar con walk
     } else if(speed>.5){
       f.walkPhase=(f.walkPhase||0)+dt*speed*2.1;
       const s=Math.sin(f.walkPhase)*.65;
@@ -1480,7 +1795,7 @@ function updateWalkAnim(dt){
     // reacción al impacto: inclinar hacia atrás + empujón que se desvanece
     f.hurtTilt=Math.max(0,(f.hurtTilt||0)-dt*2.2);
     if(!f.air && (!koState||koState.loser!==f)){
-      f.mesh.rotation.x=-f.hurtTilt*.4;
+      if(!u.hd && f.knockdown<=0 && f.getup<=0) f.mesh.rotation.x=-f.hurtTilt*.4;
       if(f.kb.lengthSq()>0.01){
         f.pos.addScaledVector(f.kb,dt);
         f.kb.multiplyScalar(Math.exp(-5*dt));
@@ -1493,14 +1808,17 @@ function updateKo(dt){
   if(!koState) return;
   koState.t+=dt;
   const {loser, winner}=koState;
+  const hdL=loser.mesh.userData.hd, hdW=winner.mesh.userData.hd;
   if(loser.air){ /* el KO en pausa aérea: lo maneja updateAereo hasta tocar suelo */ }
-  else{
+  else if(!hdL){
     const p=Math.min(1, koState.t*1.8);
     loser.mesh.rotation.x=-p*1.5;                 // cae hacia atrás y se hunde
     loser.mesh.position.y=.3-p*.3;
   }
-  const hop=Math.abs(Math.sin(koState.t*7))*.55*Math.max(0,1-koState.t/2.5);
-  winner.mesh.position.y=.3+hop;                // salta de celebración
+  if(!hdW){
+    const hop=Math.abs(Math.sin(koState.t*7))*.55*Math.max(0,1-koState.t/2.5);
+    winner.mesh.position.y=.3+hop;                // salta de celebración
+  }
 }
 
 // ── Combate aéreo estilo ENENRA: juggle del atacante + física de vuelo ──────
@@ -1511,14 +1829,15 @@ function updateAereo(dt){
       f.air.vy-=15*dt;
       f.pos.y+=f.air.vy*dt;
       f.mesh.rotation.x=THREE.MathUtils.clamp(-f.air.vy*.07,-1.05,.55); // vuelve en el aire
-      if(f.pos.y<=.3){ // aterrizaje: slam con polvo (puede resquebrajar pilares cercanos)
-        f.pos.y=.3; f.mesh.rotation.x=0; f.air=null; f.state='idle';
+      if(f.pos.y<=.3){ // aterrizaje: slam con polvo → knockdown MK (puede resquebrajar pilares)
+        f.pos.y=.3; f.mesh.rotation.x=0; f.air=null;
         burst(f.pos.x,.4,f.pos.z,0x94a3b8); shakeT=.4; sfx('slam');
         damagePillars(f.pos.x,.4,f.pos.z, 20, null);
+        if(f.hp>0 && !roundOver) knockdown(f); else f.state='idle';
       }
     }
     // Regreso suave del atacante tras terminar el combo aéreo
-    if(!f.air&&!f.aerial&&f.pos.y>.32){
+    if(!f.air&&!f.aerial&&!f.jump&&f.pos.y>.32){
       f.pos.y=Math.max(.3, f.pos.y-4.5*dt);
       if(f.pos.y<=.32) f.pos.y=.3;
     }
@@ -1531,6 +1850,7 @@ function updateAereo(dt){
       faceTo(f,v);
       if(a.t>=a.next){
         a.next+=.3; a.hits--;
+        playFightAnim(f,'Punch1');
         let dmg=Math.round(9*weaponOf(f).dmg*comboBonus(f)*(f===p2?(.85+p2.memory.aggression*.4)*p2.cfg().dmgBonus:1));
         const dealt=v.hit(dmg,f,false);
         registerHit(f,dealt);
@@ -1550,6 +1870,7 @@ function loop(){
   const rdt=Math.min(.05,clock.getDelta());
   if(timeScale<1) timeScale=Math.min(1, timeScale+rdt*(koState?.8:1.9)); // slow-mo se recupera
   const dt=rdt*timeScale;
+  updateMatch(rdt);   // [MK] intro, ventana FINISH HIM, cinemática de fatality
   for(const mx of mixers) mx.update(dt);   // animaciones glTF (Blender / Tripo AI)
   decayCombo(dt);
   updateLegendary(dt);
@@ -1559,6 +1880,7 @@ function loop(){
   else if(autoMode && p2.combo>=2) comboEl.textContent='🔥 '+p2.name+' x'+p2.combo;
   else comboEl.textContent='';
   if(!roundOver){ playerUpdate(dt); adaptiveBrain(dt); aiAnim(dt); }
+  updateCombat(dt);   // [MK] ventanas activas, salto, dash, knockdown/getup
   updateWalkAnim(dt);
   updateAereo(dt);
   updatePillars(dt);
@@ -1603,20 +1925,51 @@ function loop(){
     }
   }
   p1.mesh.position.copy(p1.pos); p2.mesh.position.copy(p2.pos);
-  // cámara sigue el punto medio
+  // cámara sigue el punto medio (o close-up del perdedor en la fatality)
   const mid=new THREE.Vector3().addVectors(p1.pos,p2.pos).multiplyScalar(.5);
-  camera.position.lerp(new THREE.Vector3(mid.x*.6,7,11),.06);
+  if(cinematic){
+    const L=cinematic.loser;
+    const a=L.facing+2.5;
+    camera.position.lerp(new THREE.Vector3(L.pos.x+Math.sin(a)*3.4, L.pos.y+2.0, L.pos.z+Math.cos(a)*3.4),.07);
+  } else {
+    camera.position.lerp(new THREE.Vector3(mid.x*.6,7,11),.06);
+  }
   if(shakeT>0){ // sacudida de cámara en golpes fuertes y KO
     shakeT-=dt;
     camera.position.x+=(Math.random()-.5)*shakeT*1.5;
     camera.position.y+=(Math.random()-.5)*shakeT*1.1;
   }
-  camera.lookAt(mid.x, Math.max(1.2,(p1.pos.y+p2.pos.y)/2+.5), mid.z);
+  if(cinematic){ const L=cinematic.loser; camera.lookAt(L.pos.x,L.pos.y+1,L.pos.z); }
+  else camera.lookAt(mid.x, Math.max(1.2,(p1.pos.y+p2.pos.y)/2+.5), mid.z);
   document.getElementById('hp1').style.width=(p1.hp/(p1.maxHp||100)*100)+'%'; document.getElementById('hp1').className='fill hp'+(p1.hp/(p1.maxHp||100)<30?' low':'');
   document.getElementById('hp2').style.width=(p2.hp/(p2.maxHp||100)*100)+'%'; document.getElementById('hp2').className='fill hp'+(p2.hp/(p2.maxHp||100)<30?' low':'');
   document.getElementById('en1').style.width=p1.energy+'%'; document.getElementById('en2').style.width=p2.energy+'%';
   renderer.render(scene,camera);
 }
+// ── [MK] Hook de debug para E2E (solo con ?debug=1) ─────────────────────────
+if(new URLSearchParams(location.search).has('debug')){
+  window.__game={
+    get state(){ return {matchState, roundNum, wins1, wins2, timeLeft, autoMode, roundOver,
+      p1:{hp:p1.hp, maxHp:p1.maxHp, energy:p1.energy, x:p1.pos.x, y:p1.pos.y, z:p1.pos.z, blocking:p1.blocking, move:p1.move?p1.moveName:null, kind:p1.kind, jump:!!p1.jump, knockdown:p1.knockdown, invuln:p1.invuln},
+      p2:{hp:p2.hp, maxHp:p2.maxHp, energy:p2.energy, x:p2.pos.x, y:p2.pos.y, z:p2.pos.z, blocking:p2.blocking, move:p2.move?p2.moveName:null, kind:p2.kind},
+      mixers:mixers.length, finishBuf:[...finishBuf]}; },
+    p1, p2, scene, renderer, camera, MOVES,
+    setAuto(v){ autoMode=!!v; document.getElementById('autoBtn').textContent=autoMode?'🤖 AUTO: ON':'🎮 MANUAL'; },
+    freezeAI(v){ debugFreezeAI=!!v; },
+    attack(who,type){ tryAttack(who==='p1'?p1:p2,type); },
+    jump(){ tryJump(p1); },
+    block(v){ p1.touchBlock=!!v; },
+    setWeapon(key){ p1.weapon=WEAPONS[key]; attachWeapon(p1); },
+    forceKO(loser){ const L=loser==='p2'?p2:p1; L.hp=0; endRound(L===p1?p2:p1); },
+    setHP(who,hp){ (who==='p1'?p1:p2).hp=hp; },
+    teleport(who,x,z){ const f=who==='p1'?p1:p2; f.pos.x=x; f.pos.z=z; },
+    clean(){ for(const f of [p1,p2]){ f.move=null; f.moveName=null; f.attackT=0; f.attackHit=false;
+      f.hurt=0; f.blockstun=0; f.invuln=0; f.knockdown=0; f.getup=0; f.air=null; f.aerial=null;
+      f.jump=null; f.dash=null; f.cooldown=0; f.blocking=false; f.state='idle'; f.pos.y=.3; } },
+    finishInput, startMatch
+  };
+}
+startMatch();   // [MK] arranca en RONDA 1 con intro
 loop();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
