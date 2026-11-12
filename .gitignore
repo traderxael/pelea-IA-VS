@@ -2,3 +2,9 @@ secrets/
 *.key
 .env
 node_modules/
+models/hd_raw/
+models/hd_rigged/
+tools/shots/
+tools/probe.mjs
+tools/probe2.mjs
+tools/hd-tasks.json
