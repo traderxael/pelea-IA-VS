@@ -3,14 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Robots Antiguos 3D - OpenAI vs Qwen vs Grok vs Gemini vs DeepSeek</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23450a0a'/><path d='M16 4l3.2 7.4 8 .7-6 5.3 1.8 7.9L16 21l-7 4.3 1.8-7.9-6-5.3 8-.7z' fill='%23f59e0b'/></svg>">
+<title>PELEA IA VS — Combate estilo Mortal Kombat 3D</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0a0e1a;color:#fff;overflow:hidden;user-select:none;touch-action:none}
   #c{position:fixed;inset:0;display:block}
-  .hud{position:fixed;top:10px;left:10px;right:10px;display:flex;gap:10px;justify-content:space-between;pointer-events:none;z-index:5}
+  #topUI{position:fixed;top:0;left:0;right:0;display:flex;flex-direction:column;gap:8px;padding:10px;pointer-events:none;z-index:5}
+  .hud{display:flex;gap:10px;justify-content:space-between;pointer-events:none}
   /* UI Anime estilo MIGHTREYA (misma estructura, nuevo look) */
-  .card{flex:1;background:linear-gradient(135deg,rgba(12,18,45,.88),rgba(40,8,60,.78));border:2px solid #fff;border-radius:6px;padding:10px;backdrop-filter:blur(6px);box-shadow:0 4px 0 rgba(0,0,0,.45),0 0 18px rgba(124,58,237,.35);transform:skewX(-4deg)}
+  .card{flex:1;background:linear-gradient(135deg,rgba(45,7,7,.9),rgba(20,4,4,.84));border:2px solid #fbbf24;border-radius:6px;padding:10px;backdrop-filter:blur(6px);box-shadow:0 4px 0 rgba(0,0,0,.5),0 0 18px rgba(185,28,28,.45);transform:skewX(-4deg)}
   .card>*{transform:skewX(4deg)}
   .card.center{transform:none;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}
   .name{font-weight:900;font-style:italic;font-size:15px;letter-spacing:.8px;text-transform:uppercase;text-shadow:2px 2px 0 #000,0 0 10px rgba(56,189,248,.6);display:flex;align-items:center;gap:7px}
@@ -28,21 +30,32 @@
   .controls{position:fixed;left:0;right:0;bottom:0;height:170px;display:flex;justify-content:space-between;align-items:flex-end;padding:12px;z-index:6;pointer-events:none}
   #joyBase{width:126px;height:126px;border-radius:50%;background:rgba(255,255,255,.10);border:2px solid rgba(255,255,255,.35);position:relative;pointer-events:auto}
   #joyKnob{width:58px;height:58px;border-radius:50%;background:#e2e8f0;position:absolute;left:34px;top:34px;box-shadow:0 4px 14px #000}
-  .btns{display:grid;grid-template-columns:70px 70px 86px;gap:10px;pointer-events:auto}
+  .btns{display:grid;grid-template-columns:repeat(3,72px);gap:9px;pointer-events:auto}
   button{border:0;border-radius:50%;font-weight:900;color:#fff;box-shadow:0 6px 0 rgba(0,0,0,.35)}
   button:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
-  .b1{width:70px;height:70px;background:#2563eb;font-size:22px}
-  .b2{width:70px;height:70px;background:#dc2626;font-size:22px}
-  .b4{width:86px;height:70px;background:#0284c7;font-size:15px}
-  .b3{width:70px;height:70px;background:#7c3aed;font-size:18px;grid-column:span 3;width:100%}
-  .topbtns{position:fixed;top:96px;left:10px;display:flex;gap:8px;z-index:7;flex-wrap:wrap;max-width:100vw}
+  .b1{width:72px;height:64px;background:#2563eb;font-size:22px}
+  .b2{width:72px;height:64px;background:#dc2626;font-size:22px}
+  .b4{width:72px;height:64px;background:#0284c7;font-size:20px}
+  .b5{width:72px;height:64px;background:#15803d;font-size:22px;border:2px solid #bbf7d0}
+  .b5.held{background:#22c55e;box-shadow:0 2px 0 rgba(0,0,0,.35),0 0 18px #22c55e}
+  .b6{width:72px;height:64px;background:#d97706;font-size:22px}
+  .b3{width:72px;height:64px;background:#7c3aed;font-size:20px;border:2px solid #fff}
+  #muteBtn{font-size:16px}
+  /* [MK] scrollbar propia en paneles/selectores */
+  .weaponbar::-webkit-scrollbar,.topbtns select::-webkit-scrollbar{height:8px;width:8px}
+  .weaponbar::-webkit-scrollbar-track,.topbtns select::-webkit-scrollbar-track{background:#1a0808;border-radius:8px}
+  .weaponbar::-webkit-scrollbar-thumb,.topbtns select::-webkit-scrollbar-thumb{background:#b91c1c;border-radius:8px;border:1px solid #fbbf24}
+  .weaponbar::-webkit-scrollbar-thumb:hover,.topbtns select::-webkit-scrollbar-thumb:hover{background:#ef4444}
+  .en.full{box-shadow:0 0 14px #67e8f9,0 0 26px #22d3ee;animation:enGlow .8s infinite alternate}
+  @keyframes enGlow{from{filter:brightness(1)}to{filter:brightness(1.5)}}
+  .topbtns{display:flex;gap:8px;flex-wrap:wrap;pointer-events:auto}
   .topbtns button, .topbtns select{border-radius:99px;padding:10px 14px;background:#1e293b;border:1px solid #fff3;font-size:13px;color:#fff;box-shadow:none;outline:none}
   .topbtns select{background:#0f172a}
-  .weaponbar{position:fixed;top:150px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:7;max-width:98vw;overflow-x:auto;padding:5px 7px;background:rgba(6,10,25,.65);border-radius:14px;border:1px solid #ffffff22}
+  .weaponbar{align-self:center;display:flex;gap:6px;pointer-events:auto;max-width:98vw;overflow-x:auto;padding:5px 7px;background:rgba(6,10,25,.65);border-radius:14px;border:1px solid #ffffff22}
   .wpn{background:#16213a;border:2px solid transparent;color:#dbeafe;border-radius:11px;padding:6px 9px;font-size:11px;font-weight:800;white-space:nowrap;box-shadow:none}
   .wpn.active{border-color:#fbbf24;background:#3a2505;box-shadow:0 0 16px #fbbf2466}
   .wpn.legendary{border-color:#facc15;background:#422006;box-shadow:0 0 18px #facc1599}
-  #combo{position:fixed;top:206px;left:14px;z-index:7;font-size:38px;font-weight:900;font-style:italic;color:#fde047;text-shadow:3px 3px 0 #000,0 0 18px #f97316;letter-spacing:1px;pointer-events:none;transform:rotate(-4deg)}
+  #combo{position:fixed;bottom:210px;left:14px;z-index:7;font-size:38px;font-weight:900;font-style:italic;color:#fde047;text-shadow:3px 3px 0 #000,0 0 18px #f97316;letter-spacing:1px;pointer-events:none;transform:rotate(-4deg)}
   @keyframes rasendanPulse{0%,100%{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 8px #67e8f9}50%{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 26px #a78bfa,0 0 40px #67e8f9}}
   .b3{animation:rasendanPulse 1.4s infinite;border:2px solid #fff}
   #hint{text-align:center;font-size:12px;opacity:.85;margin-top:4px}
@@ -70,6 +83,7 @@
 <body>
 <canvas id="c"></canvas>
 
+<div id="topUI">
 <div class="hud">
   <div class="card">
     <div class="name"><span id="youPortrait" class="portrait">🤖</span><span id="youName">🔵 TITÁN AZUL</span> <span id="youTag" class="tag">TÚ</span></div>
@@ -95,6 +109,7 @@
 
 <div class="topbtns">
   <button id="autoBtn">🤖 AUTO: ON</button>
+  <button id="muteBtn" title="Silenciar / activar sonido"></button>
   <select id="charSel" title="Tu personaje">
     <option value="robot">🤖 Titán</option>
     <option value="soldier">🪖 Soldado</option>
@@ -135,6 +150,7 @@
 </div>
 
 <div class="weaponbar" id="weaponBar"></div>
+</div>
 <div id="combo"></div>
 <div id="banner"></div>
 <div id="toast"></div>
@@ -157,8 +173,10 @@
   <div class="btns">
     <button class="b1" id="punch">👊</button>
     <button class="b2" id="kick">🦵</button>
-    <button class="b4" id="launcher">🚀 AIRE</button>
-    <button class="b3" id="special">🌀 RASENDAN</button>
+    <button class="b4" id="launcher">🚀</button>
+    <button class="b5" id="block"></button>
+    <button class="b6" id="jump"></button>
+    <button class="b3" id="special">🌀</button>
   </div>
 </div>
 
@@ -168,12 +186,22 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const isMobile = matchMedia('(pointer:coarse)').matches || innerWidth<800;
+renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile?1.5:2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
+// [HD/perf] degradación escalonada para GPUs modestas (GT 640): sombra→pixelRatio→castShadow
+let perfLevel=0, perfAcc=0, perfFrames=0;
+function degradePerf(){
+  perfLevel++;
+  if(perfLevel===1){ sun.shadow.mapSize.set(512,512); sun.shadow.map&&sun.shadow.map.dispose(); sun.shadow.map=null; }
+  else if(perfLevel===2){ renderer.setPixelRatio(1); }
+  else if(perfLevel===3){ sun.castShadow=false; }
+}
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0e1a);
 scene.fog = new THREE.Fog(0x0a0e1a, 18, 38);
@@ -184,6 +212,9 @@ camera.position.set(0,7,11);
 scene.add(new THREE.HemisphereLight(0xbfd7ff,0x1a1030,1.2));
 const sun = new THREE.DirectionalLight(0xffffff,2.2);
 sun.position.set(6,12,6); sun.castShadow=true; scene.add(sun);
+sun.shadow.mapSize.set(1024,1024);
+sun.shadow.camera.left=-11; sun.shadow.camera.right=11; sun.shadow.camera.top=11; sun.shadow.camera.bottom=-11;
+sun.shadow.camera.near=1; sun.shadow.camera.far=40; sun.shadow.bias=-0.0005;
 const rim = new THREE.PointLight(0x38bdf8,30,20); rim.position.set(-5,4,-4); scene.add(rim);
 
 // Arena
@@ -888,7 +919,13 @@ const CHARS={
   panda:    {label:'🐼 PANDA',         short:'🐼 PANDA',    hp:120, speed:0.90, fallback:()=>makePanda(0x93c5fd,0xf97316)},
   roja:     {label:'👩‍🦰 PELIRROJA',   short:'👩‍🦰 PELIRROJA',hp:90, speed:1.20, fallback:()=>makeRoja(0x16a34a,0x22c55e)},
   ogro:     {label:'👹 OGRO',          short:'👹 OGRO',     hp:150, speed:0.80, fallback:()=>makeOgro(0x86efac,0xef4444)},
+  hd_ninja:  {label:'🥷 NINJA HD',     short:'🥷 NINJA HD',  hp:80,  speed:1.35, hd:'ninja',   fallback:()=>makeSoldier(0x1e1b4b,0x7c3aed)},
+  hd_soldier:{label:'🪖 SOLDADO HD',   short:'🪖 SOLDADO HD',hp:95,  speed:1.12, hd:'soldier', fallback:()=>makeSoldier(0x16a34a,0x84cc16)},
+  hd_ronin:  {label:'⚔️ RONIN HD',     short:'⚔️ RONIN HD',  hp:88,  speed:1.22, hd:'ronin',   fallback:()=>makeRonin(0x1c1917,0xd97706)},
 };
+// Retratos por codepoint (evita depender de emojis literales en el código)
+const PORTRAIT_CP={robot:0x1F916,soldier:0x1FA96,ninja:0x1F977,samurai:0x2694,gladiator:0x1F6E2,volt:0x1F534,brute:0x1F9A3,vamp:0x1F9DB,ronin:0x1F94B,rhino:0x1F98F,panda:0x1F43C,roja:0x1F469,ogro:0x1F479,hd_ninja:0x1F977,hd_soldier:0x1FA96,hd_ronin:0x2694};
+function portraitOf(k){ return String.fromCodePoint(PORTRAIT_CP[k]||0x1F916); }
 // Usa la primera instancia cargada del modelo que no esté en escena
 function baseKind(kind){ return kind.replace(/_b$/,''); }
 function spawnGltf(kind, pos){
@@ -898,24 +935,93 @@ function spawnGltf(kind, pos){
   }
   return null;
 }
+// ── [HD] Carga lazy de luchadores realistas (Rodin) + clonación de esqueleto ──
+const hdCache={};
+function loadHD(base){
+  if(hdCache[base]) return Promise.resolve(hdCache[base]);
+  return new Promise(resolve=>{
+    gltfLoader.load('assets/models/hd_'+base+'.glb', gltf=>{
+      hdCache[base]={scene:gltf.scene, animations:gltf.animations};
+      resolve(hdCache[base]);
+    }, undefined, ()=>resolve(null));   // file:// o sin archivo → null → fallback legacy
+  });
+}
+function resolveHDClips(anims){
+  const byName={}; for(const c of anims) byName[c.name]=c;
+  const find=(...n)=>{ for(const x of n) if(byName[x]) return byName[x]; return null; };
+  const re=rx=>anims.find(c=>rx.test(c.name))||null;
+  return {
+    Idle:find('Idle')||re(/offensive_idle|human_000014/i)||re(/idle/i)||anims[0]||null,
+    Idle2:find('Idle2')||re(/^Idle_Loop/i),
+    Walk:find('Walk')||re(/walking|human_000029/i)||re(/walk/i),
+    Run:find('Run')||re(/jogging|human_000040/i)||re(/sprint|jog|run/i),
+    KO:find('KO')||re(/dying|human_000069|death/i),
+    Punch1:find('Punch1')||re(/punch_jab/i),
+    Punch2:find('Punch2')||re(/punch_cross/i),
+    Kick:find('Kick'), Uppercut:find('Uppercut'), Hammer_Overhead:find('Hammer_Overhead'),
+    SwordAttack:find('SwordAttack')||re(/sword_attack/i),
+    Special_Cast:find('Special_Cast')||re(/spell_simple_shoot/i),
+    HitHigh:find('HitHigh')||re(/hit_head/i), HitLow:find('HitLow')||re(/hit_chest/i),
+    Block:find('Block'), Knockdown:find('Knockdown'), Getup:find('Getup'), Victory:find('Victory'),
+    JumpStart:find('JumpStart')||re(/jump_start/i), JumpLoop:find('JumpLoop')||re(/jump_loop/i),
+    JumpLand:find('JumpLand')||re(/jump_land/i), Roll:find('Roll')||re(/^Roll$/i),
+  };
+}
+function buildHDMesh(cached){
+  const root=new THREE.Group();
+  const inst=SkeletonUtils.clone(cached.scene);
+  // materiales propios por instancia: el flash de daño no debe afectar al rival
+  inst.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=false; if(o.material) o.material=o.material.clone(); } });
+  const box=new THREE.Box3().setFromObject(inst);
+  inst.position.y=-box.min.y;   // pies a y=0 relativo a la raíz
+  root.add(inst);
+  applyGltf(root);
+  const u=root.userData; u.hd=true;
+  const mixer=new THREE.AnimationMixer(inst);
+  u.mixer=mixer; u.hdClips=resolveHDClips(cached.animations);
+  mixers.push(mixer);
+  const idle=u.hdClips.Idle;
+  if(idle){ const a=mixer.clipAction(idle); a.play(); u.animCur=a; }
+  return root;
+}
+function removeMixer(mesh){
+  const m=mesh&&mesh.userData&&mesh.userData.mixer;
+  if(!m) return;
+  const i=mixers.indexOf(m); if(i>=0) mixers.splice(i,1);
+  m.stopAllAction();
+}
+// Equipa un luchador: HD asíncrono con placeholder legacy, o legacy síncrono.
+function equipFighter(f, kind, c, afterMesh){
+  f.kind=kind;
+  const pos=f.pos.clone();
+  removeMixer(f.mesh); scene.remove(f.mesh);
+  const finish=(mesh,at)=>{ mesh.position.copy(at); scene.add(mesh); f.mesh=mesh; f.pos=mesh.position;
+    f.maxHp=c.hp; f.hp=c.hp; f.speedMul=c.speed; f.name=c.label; afterMesh(); attachWeapon(f); };
+  if(c.hd){
+    finish(c.fallback(), pos);   // placeholder mientras carga el HD
+    loadHD(c.hd).then(cached=>{
+      if(f.kind!==kind) return;          // cambió de personaje mientras cargaba
+      if(!cached){ showToast('📁 HD no disponible (file://): usando legacy'); return; }
+      const cur=f.pos.clone();
+      removeMixer(f.mesh); scene.remove(f.mesh);
+      finish(buildHDMesh(cached), cur);
+      showToast('✨ MODELO HD REALISTA: '+c.short);
+    });
+  } else {
+    let mesh=spawnGltf(kind,pos);
+    if(mesh){ showToast('🤖 MODELO 3D CARGADO: '+c.short); }
+    else mesh=c.fallback();
+    finish(mesh, pos);
+  }
+}
 function swapP1(kind){
   const c=CHARS[kind]||CHARS.robot;
   if(p1.kind===kind && p1.mesh && p1.mesh.userData.isGltf) return; // ya está con este modelo
-  p1.kind=kind;
-  const pos=p1.pos.clone();
-  scene.remove(p1.mesh);
-  let mesh=spawnGltf(kind,pos);
-  if(mesh){ showToast('🤖 MODELO 3D CARGADO: '+c.short); }
-  else { mesh=c.fallback(); mesh.position.copy(pos); scene.add(mesh); }
-  p1.mesh=mesh; p1.pos=mesh.position;
-  p1.maxHp=c.hp; p1.hp=c.hp;
-  p1.speedMul=c.speed;
-  p1.name=c.label;
-  document.getElementById('youName').textContent=c.label;
-  const _pe={robot:'🤖',soldier:'🪖',ninja:'🥷',samurai:'⚔️',gladiator:'🛡️',volt:'🔴',brute:'🦣',vamp:'🧛',ronin:'🥋',rhino:'🦏',panda:'🐼',roja:'👩‍🦰',ogro:'👹'};
-  const _yp=document.getElementById('youPortrait'); if(_yp) _yp.textContent=_pe[kind]||'🤖';
-  document.querySelector('#youTag').textContent=c.short+' · TÚ';
-  attachWeapon(p1);
+  equipFighter(p1, kind, c, ()=>{
+    document.getElementById('youName').textContent=c.label;
+    const _yp=document.getElementById('youPortrait'); if(_yp) _yp.textContent=portraitOf(kind);
+    document.querySelector('#youTag').textContent=c.short+' · TÚ';
+  });
 }
 // ── Sistema de armas ──────────────────────────────────────────────────────
 // Equipa armas que cambian daño, alcance y velocidad: puños, espada, martillo...
@@ -985,8 +1091,17 @@ function attachWeapon(f){
   if(f.weaponMesh && f.weaponMesh.parent){ f.weaponMesh.parent.remove(f.weaponMesh); f.weaponMesh=null; }
   const w=weaponOf(f);
   const g=buildWeaponMesh(w.key);
-  if(f.mesh.userData.isGltf){
-    const b=f.mesh.userData.armR;
+  const u=f.mesh.userData;
+  if(u.hd){
+    // [HD] ancla al hueso RightHand del rig Mixamo (offset por arma, ajustable)
+    const hand=gltfFindNode(f.mesh,'righthand')||u.armR;
+    const off=w.hd||{pos:[0,.12,.05],rot:[Math.PI/2,0,0],scale:.95};
+    g.position.set(off.pos[0],off.pos[1],off.pos[2]);
+    g.rotation.set(off.rot[0],off.rot[1],off.rot[2]);
+    g.scale.setScalar(off.scale);
+    hand.add(g);
+  } else if(u.isGltf){
+    const b=u.armR;
     const len=typeof b.length==='function'?b.length():.65;
     g.position.set(0,len*1.05,0);
     g.scale.setScalar(Math.max(.35,len*1.15));
@@ -994,7 +1109,7 @@ function attachWeapon(f){
   } else {
     g.position.set(0,-1.02,.16);
     g.rotation.x=Math.PI/2;
-    f.mesh.userData.armR.add(g);
+    u.armR.add(g);
   }
   f.weaponMesh=g;
 }
@@ -1027,8 +1142,9 @@ function spawnPlasma(f,type){
 }
 
 // ── Sonidos (Web Audio API, sin archivos externos) ────────────────────────
-let audioCtx=null;
+let audioCtx=null, muted=false;
 function sfx(kind){
+  if(muted) return;
   try{
     audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') audioCtx.resume();
@@ -1184,20 +1300,10 @@ function swapP2(kind){
   kind = kind || (document.getElementById('rivalSel')||{value:'volt'}).value;
   const c=CHARS[kind]||CHARS.volt;
   if(p2.kind===kind && p2.mesh && p2.mesh.userData.isGltf) return; // ya está con este modelo
-  p2.kind=kind;
-  const pos=p2.pos.clone();
-  scene.remove(p2.mesh);
-  let mesh=spawnGltf(kind,pos);
-  if(!mesh){ mesh=c.fallback(); mesh.position.copy(pos); scene.add(mesh); }
-  mesh.position.y=.3;
-  p2.mesh=mesh; p2.pos=mesh.position;
-  p2.maxHp=c.hp; p2.hp=c.hp;
-  p2.speedMul=c.speed;
-  p2.name=c.label;
-  document.getElementById('rivalName').textContent=c.label;
-  const _pe2={robot:'🤖',soldier:'🪖',ninja:'🥷',samurai:'⚔️',gladiator:'🛡️',volt:'🔴',brute:'🦣',vamp:'🧛',ronin:'🥋',rhino:'🦏',panda:'🐼',roja:'👩‍🦰',ogro:'👹'};
-  const _rp=document.getElementById('rivalPortrait'); if(_rp) _rp.textContent=_pe2[kind]||'🔴';
-  attachWeapon(p2);
+  equipFighter(p2, kind, c, ()=>{
+    document.getElementById('rivalName').textContent=c.label;
+    const _rp=document.getElementById('rivalPortrait'); if(_rp) _rp.textContent=portraitOf(kind);
+  });
 }
 function trySwap(kind){
   // Cuando un .glb termina de cargar, lo usa si aplica al luchador actual
@@ -1264,10 +1370,45 @@ function bindBtn(id, fn){
   el.addEventListener('touchstart',e=>{e.preventDefault();fn();},{passive:false});
   el.addEventListener('click',fn);
 }
-bindBtn('punch',()=>{finishInput('j'); tryAttack(p1,'punch');});
-bindBtn('kick',()=>{finishInput('k'); tryAttack(p1,'kick');}) ;
+// [MK] botón con hold (bloqueo táctil)
+function bindHold(id, on, off){
+  const el=document.getElementById(id);
+  const down=e=>{e.preventDefault();el.classList.add('held');on();};
+  const up=()=>{el.classList.remove('held');off&&off();};
+  el.addEventListener('touchstart',down,{passive:false});
+  el.addEventListener('touchend',up); el.addEventListener('touchcancel',up);
+  el.addEventListener('mousedown',down); el.addEventListener('mouseup',up); el.addEventListener('mouseleave',up);
+}
+let lastPunchTap=0;
+bindBtn('punch',()=>{ finishInput('j');
+  const now=performance.now();
+  if(now-lastPunchTap<280){ p1.move=null; p1.moveName=null; p1.cooldown=0; tryAttack(p1,'launcher'); lastPunchTap=0; }
+  else { tryAttack(p1,'punch'); lastPunchTap=now; }
+});
+bindBtn('kick',()=>{finishInput('k'); tryAttack(p1,'kick');});
 bindBtn('launcher',()=>tryAttack(p1,'launcher'));
 bindBtn('special',()=>{finishInput('l'); tryAttack(p1,'special');});
+bindHold('block', ()=>{p1.touchBlock=true;}, ()=>{p1.touchBlock=false;});
+bindBtn('jump',()=>tryJump(p1));
+// Textos de botón por codepoint (emojis robustos)
+document.getElementById('block').textContent=String.fromCodePoint(0x1F6E2);
+document.getElementById('jump').textContent=String.fromCodePoint(0x2B06);
+const muteBtn=document.getElementById('muteBtn');
+function renderMute(){ muteBtn.textContent=String.fromCodePoint(muted?0x1F507:0x1F50A); muteBtn.title=muted?'Activar sonido':'Silenciar'; }
+renderMute();
+muteBtn.onclick=()=>{ muted=!muted; if(audioCtx){ muted?audioCtx.suspend():audioCtx.resume(); } renderMute(); showToast(muted?'Sonido silenciado':'Sonido activo'); };
+// [HD] Selectores con grupos REALISTAS / LEGACY (fuente única: CHARS)
+function fillCharSel(sel, current){
+  const mk=k=>{ const o=document.createElement('option'); o.value=k; o.textContent=CHARS[k].label; return o; };
+  sel.innerHTML='';
+  const gHD=document.createElement('optgroup'); gHD.label='REALISTAS (HD)';
+  ['hd_ninja','hd_soldier','hd_ronin'].forEach(k=>gHD.appendChild(mk(k)));
+  const gLG=document.createElement('optgroup'); gLG.label='LEGACY';
+  Object.keys(CHARS).filter(k=>!CHARS[k].hd).forEach(k=>gLG.appendChild(mk(k)));
+  sel.appendChild(gHD); sel.appendChild(gLG); sel.value=current;
+}
+fillCharSel(document.getElementById('charSel'),'hd_ninja');
+fillCharSel(document.getElementById('rivalSel'),'hd_soldier');
 
 document.getElementById('autoBtn').onclick=e=>{autoMode=!autoMode; e.target.textContent=autoMode?'🤖 AUTO: ON':'🎮 MANUAL';};
 document.getElementById('personaSel').onchange=e=>{
@@ -1499,7 +1640,14 @@ function adaptiveBrain(dt){
   const d=dist(p1,p2);
   faceTo(p2,p1);
   p2.timer-=dt; p2.cooldown-=dt;
-  if(p2.move) return;   // [MK] el move activo se resuelve en updateCombat
+  if(p2.move){
+    // [MK] combo: encadena un cancel si el golpe anterior conectó y estás en la ventana
+    const mv=p2.move;
+    if(p2.attackHit && mv.cancel && p2.attackT>=mv.cancelFrom && p2.attackT<=mv.cancelTo && Math.random()<m.aggression){
+      tryAttack(p2, mv.cancel[Math.floor(Math.random()*mv.cancel.length)]);
+    }
+    return;   // el move activo se resuelve en updateCombat
+  }
   if(p2.state==='attack') p2.state='idle';
   // [MK] bloqueo reactivo: el rival ataca cerca → cubrirse según defensa aprendida
   if(p1.move && d<3.2 && Math.random()<learnedDef*.55){
@@ -1721,19 +1869,32 @@ function playerUpdate(dt){
   if(p1.air||p1.aerial) return;   // en el aire no controlas (te lanzaron / combo aéreo)
   if(p1.knockdown>0||p1.getup>0) return;
   faceTo(p1,p2);
-  // [MK] bloqueo del jugador: Shift/U hold (o botón 🛡️ táctil)
-  const wantBlock=(keys['shift']||keys['u']||p1.touchBlock) && !autoMode;
-  p1.blocking=!!(wantBlock && !p1.move && !p1.jump && p1.hurt<=0 && p1.blockstun<=0);
-  if(p1.blocking) p1.state='block';
+  // [MK] bloqueo del jugador: Shift/U hold (o botón táctil). En AUTO, bloqueo reactivo con timer.
+  if(autoMode){
+    if(p1.autoBlockT>0){ p1.autoBlockT-=dt; p1.blocking=!p1.move&&!p1.jump&&p1.hurt<=0; p1.state=p1.blocking?'block':p1.state; }
+    else p1.blocking=false;
+  } else {
+    const wantBlock=(keys['shift']||keys['u']||p1.touchBlock);
+    p1.blocking=!!(wantBlock && !p1.move && !p1.jump && p1.hurt<=0 && p1.blockstun<=0);
+    if(p1.blocking) p1.state='block';
+  }
   let mx=0,mz=0;
   if(autoMode){
-    // Ambos pelean solos cuando AUTO está ON (modo espectador IA vs IA)
+    // [MK] AUTO mejorado: combos por cancel, anti-aéreo, especial con energía, bloqueo reactivo
     const d=dist(p1,p2);
-    if(d>3) { mz=1; }
-    else if(Math.random()<.03){
-      tryAttack(p1, Math.random()<.22?'launcher':(Math.random()<.5?'punch':'kick'));
+    if(p1.move){
+      const mv=p1.move;
+      if(p1.attackHit && mv.cancel && p1.attackT>=mv.cancelFrom && p1.attackT<=mv.cancelTo && Math.random()<.5){
+        tryAttack(p1, mv.cancel[Math.floor(Math.random()*mv.cancel.length)]);
+      }
+    } else if(p1.blockstun<=0 && p1.hurt<=0){
+      if(p2.move && d<3.2 && Math.random()<.3){ p1.autoBlockT=.4; }
+      else if((p2.jump||p2.air) && d<3 && p1.cooldown<=0 && Math.random()<.5){ tryAttack(p1, p2.air?'launcher':'kick'); }
+      else if(d>3){ mz=1; }
+      else if(p1.energy>=35 && d<=5 && Math.random()<.04){ tryAttack(p1,'special'); }
+      else if(p1.cooldown<=0 && Math.random()<.06){ tryAttack(p1, Math.random()<.2?'launcher':(Math.random()<.5?'punch':'kick')); }
+      else if(d<1.8 && Math.random()<.02){ mz=-.6; }
     }
-    if(d<2 && Math.random()<.01) mz=-.6;
   } else if(!p1.move && !p1.blocking && p1.blockstun<=0){
     if(keys['w']||keys['arrowup']) mz+=1; if(keys['s']||keys['arrowdown']) mz-=1;
     if(keys['a']||keys['arrowleft']) mx-=1; if(keys['d']||keys['arrowright']) mx+=1;
@@ -1867,7 +2028,8 @@ function updateAereo(dt){
 const clock=new THREE.Clock();
 function loop(){
   requestAnimationFrame(loop);
-  const rdt=Math.min(.05,clock.getDelta());
+  const raw=clock.getDelta();
+  const rdt=Math.min(.05,raw);
   if(timeScale<1) timeScale=Math.min(1, timeScale+rdt*(koState?.8:1.9)); // slow-mo se recupera
   const dt=rdt*timeScale;
   updateMatch(rdt);   // [MK] intro, ventana FINISH HIM, cinemática de fatality
@@ -1944,7 +2106,13 @@ function loop(){
   document.getElementById('hp1').style.width=(p1.hp/(p1.maxHp||100)*100)+'%'; document.getElementById('hp1').className='fill hp'+(p1.hp/(p1.maxHp||100)<30?' low':'');
   document.getElementById('hp2').style.width=(p2.hp/(p2.maxHp||100)*100)+'%'; document.getElementById('hp2').className='fill hp'+(p2.hp/(p2.maxHp||100)<30?' low':'');
   document.getElementById('en1').style.width=p1.energy+'%'; document.getElementById('en2').style.width=p2.energy+'%';
+  document.getElementById('en1').className='fill en'+(p1.energy>=100?' full':''); document.getElementById('en2').className='fill en'+(p2.energy>=100?' full':'');
   renderer.render(scene,camera);
+  // [MK] degradación escalonada: si el FPS sostenido cae, baja sombras → pixelRatio → sombras off
+  if(matchState==='FIGHT'){
+    perfAcc+=raw; perfFrames++;
+    if(perfAcc>=2){ if(perfFrames/perfAcc<25 && perfLevel<3) degradePerf(); perfAcc=0; perfFrames=0; }
+  } else { perfAcc=0; perfFrames=0; }
 }
 // ── [MK] Hook de debug para E2E (solo con ?debug=1) ─────────────────────────
 if(new URLSearchParams(location.search).has('debug')){
@@ -1969,6 +2137,8 @@ if(new URLSearchParams(location.search).has('debug')){
     finishInput, startMatch
   };
 }
+// [HD] Roster principal realista por defecto (carga lazy; fallback legacy en file://)
+swapP1('hd_ninja'); swapP2('hd_soldier');
 startMatch();   // [MK] arranca en RONDA 1 con intro
 loop();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
