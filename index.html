@@ -1191,6 +1191,32 @@ function sfx(kind){
   }catch(e){ /* sin audio */ }
 }
 
+// ── [VOZ] Voces GRATIS por IA (Web Speech API del navegador, sin API de pago) ──
+// Cada persona tiene timbre/ritmo propio: pitch+rate distintos y, si el navegador
+// ofrece varias voces es, se reparte una por persona para diferenciar el timbre.
+const VOICE_CFG={
+  openai:  {pitch:.75, rate:.95, idx:0},   // grave, pausado: estratégico
+  qwen:    {pitch:1.35,rate:1.4, idx:1},   // agudo, rapidísimo: velocidad
+  grok:    {pitch:1.6, rate:1.2, idx:2},   // chillón, caótico
+  gemini:  {pitch:1.0, rate:.8,  idx:3},   // neutro, calmado: paciente
+  deepseek:{pitch:.55, rate:1.05,idx:4}    // muy grave, analítico
+};
+let voiceList=[];
+function refreshVoices(){ if('speechSynthesis' in window) voiceList=speechSynthesis.getVoices().filter(v=>/^es/i.test(v.lang)); }
+if('speechSynthesis' in window){ refreshVoices(); speechSynthesis.onvoiceschanged=refreshVoices; }
+function speak(text, persona){
+  if(muted || !('speechSynthesis' in window) || !text) return;
+  try{
+    const c=VOICE_CFG[persona]||VOICE_CFG.openai;
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='es-ES'; u.pitch=c.pitch; u.rate=c.rate; u.volume=1;
+    if(voiceList.length) u.voice=voiceList[c.idx % voiceList.length];
+    speechSynthesis.cancel();   // una frase a la vez, sin cola acumulada
+    speechSynthesis.speak(u);
+  }catch(e){ /* sin voz */ }
+}
+function stopVoice(){ if('speechSynthesis' in window) speechSynthesis.cancel(); }
+
 // ── Combo ────────────────────────────────────────────────────────────────
 p1.combo=0; p2.combo=0; p1.comboTimer=0; p2.comboTimer=0;
 p1.legendaryUntil=0; p2.legendaryUntil=0; p1.prevWeapon=null; p2.prevWeapon=null;
@@ -1396,7 +1422,7 @@ document.getElementById('jump').textContent=String.fromCodePoint(0x2B06);
 const muteBtn=document.getElementById('muteBtn');
 function renderMute(){ muteBtn.textContent=String.fromCodePoint(muted?0x1F507:0x1F50A); muteBtn.title=muted?'Activar sonido':'Silenciar'; }
 renderMute();
-muteBtn.onclick=()=>{ muted=!muted; if(audioCtx){ muted?audioCtx.suspend():audioCtx.resume(); } renderMute(); showToast(muted?'Sonido silenciado':'Sonido activo'); };
+muteBtn.onclick=()=>{ muted=!muted; if(audioCtx){ muted?audioCtx.suspend():audioCtx.resume(); } if(muted) stopVoice(); renderMute(); showToast(muted?'Sonido silenciado':'Sonido activo'); };
 // [HD] Selectores con grupos REALISTAS / LEGACY (fuente única: CHARS)
 function fillCharSel(sel, current){
   const mk=k=>{ const o=document.createElement('option'); o.value=k; o.textContent=CHARS[k].label; return o; };
@@ -1416,6 +1442,8 @@ document.getElementById('personaSel').onchange=e=>{
   const cfg=p2.cfg();
   document.getElementById('personaTag').textContent=cfg.label;
   showToast(cfg.label+' · '+cfg.desc);
+  const greet={openai:'Soy OpenAI. Analizaré cada uno de tus movimientos.',qwen:'Soy Qwen. No podrás seguir mi velocidad.',grok:'Soy Grok. El caos es mi estilo, prepárate.',gemini:'Soy Gemini. Paciencia: ya calculé tu derrota.',deepseek:'Soy DeepSeek. Encontraré tu debilidad.'};
+  speak(greet[p2.persona]||greet.openai, p2.persona);
   p2.memory.closeAttacks=0; p2.memory.farAttacks=0; p2.memory.blocks=0; p2.memory.counters=0;
 };
 document.getElementById('resetBtn').onclick=()=>{startMatch();showToast(p2.name+' eligió '+p2.weapon.label+' 🎲');};
@@ -1672,7 +1700,7 @@ function adaptiveBrain(dt){
       deepseek:['Buscando patrón... 🔍','Tu debilidad: cerca','Copiando tu estilo','Detectada tu falla']
     };
     const arr=phrases[p2.persona] || phrases.qwen;
-    if(arr) showToast(arr[Math.floor(Math.random()*arr.length)]);
+    if(arr){ const line=arr[Math.floor(Math.random()*arr.length)]; showToast(line); speak(line.replace(/[^\wáéíóúñü¡!¿?.,: ]/gi,''), p2.persona); }
   }
   // La IA a veces va por los objetos del ring (armas, botiquín, energía, escudo)
   let seekPickup=false;
@@ -1771,6 +1799,9 @@ function endRound(winner){
   updateScore();
   const b=document.getElementById('banner'); b.textContent=`🏆 ¡${winner.name} GANA LA RONDA!`; b.style.display='block';
   burst(winner.pos.x,2,winner.pos.z,winner===p1?0x38bdf8:0xff6600);
+  const winLine={openai:'Resultado óptimo: victoria.',qwen:'Demasiado rápido para ti.',grok:'¡Ja! El caos gana otra vez.',gemini:'La paciencia siempre vence.',deepseek:'Tu debilidad era evidente.'};
+  const loseLine={openai:'Recalculando estrategia.',qwen:'Imposible, soy más rápido.',grok:'¡Esto no fue caos, fue suerte!',gemini:'Un revés temporal.',deepseek:'Ajustando mi modelo.'};
+  speak(winner===p2 ? (winLine[p2.persona]||winLine.openai) : (loseLine[p2.persona]||loseLine.openai), p2.persona);
   const matchPoint=(winner===p1?wins1:wins2)>=2;   // best-of-3: FINISH HIM solo en match point
   setTimeout(()=>{
     if(matchState!=='KO') return;
