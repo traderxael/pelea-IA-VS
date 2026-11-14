@@ -1,80 +1,97 @@
-# pelea IA VS
+# PELEA IA VS — Combate 3D estilo Mortal Kombat
 
-Juego 3D para celulares de pelea IA vs IA, estilo AI Fight.
-
-## Características
-- **Modo:** IA vs IA (con control opcional del jugador)
-- **IA:** Adaptativa — aprende de ataques cercanos/lejanos, sube bloqueo y contraataque
-- **Luchadores:** Robots 3D y soldado riggeados (modelos Blender GLB animados)
-- **Plataforma:** Web con Three.js, sin instalar APK
-- **Controles:** Joystick virtual + botones táctiles (Puño 👊, Patada 🦵, Especial ⚡)
-- **Armas:** 6 armas con alcance/daño/recarga distintos (la IA también las usa)
-
-## Cómo jugar
-Abre `index.html` en tu celular o computadora. En PC: WASD para moverte, J=puño, K=patada, L=especial. En celular: usa el joystick y los botones en pantalla.
-
-Barras de vida y energía, daño flotante, partículas, cámara que sigue la acción, rondas con contador y modo AUTO para ver pelear a ambas IAs.
-
-## Armas (elige con la barra superior)
-- 🥊 **Puños** — equilibrado, daño normal
-- 🗡️ **Espada** — mucho mayor alcance (4.7m) y +30% daño
-- 🔨 **Martillo** — daño brutal (x2.0) pero lento (recarga 1.75x)
-- 🥢 **Nunkus** — muy rápido (recarga 0.5x)
-- 🪄 **Lanza** — alcance máximo (6.3m)
-- 🔫 **Plasma** — proyectil a distancia que viaja por el aire
-- 🎲 VOLT ROJO elige un arma aleatoria en cada ronda (reto distinto cada vez)
-
-Cambia de arma con un toque en la barra de armas.
-
-## Combos
-- **Tú:** 3+ golpes seguidos sin recibir daño → daño **+35%** (🔥 aparece el contador xN)
-- **VOLT ROJO (IA):** el mismo sistema pero con bonus limitado a **+15%**, para que puedas ganarle
-- El contador aparece a la izquierda si la IA lo logra (en modo AUTO)
-
-## Armas legendarias
-- 🐉 **Espada de Fuego** y ⚡ **Mjölnir** caen en la arena con un **haz de luz**
-- Quien la toma primero hace daño x2.0/x2.6 durante 22 segundos
-- Período de gracia de 1.5s antes de poder recogerla
-
-## Animaciones
-- 🚶 **Caminar** — piernas y brazos se balancean al moverse
-- 💥 **Reacción al impacto** — el luchador se inclina hacia atrás y sale empujado
-- 😵 **KO** — el derrotado cae hacia atrás y se hunde en la arena
-- 🏆 **Victoria** — el ganador salta de celebración
-- 🎥 **Sacudida de cámara** en golpes fuertes (martillo, especial, KO final)
-- Idle y Attack importados de Blender (glTF) para TITÁN, VOLT y Soldado
-
-## Sonidos
-Cada golpe suena distinto según el arma: 🥊 golpe seco, 🗡️ clang metálico, 🔨 boom grave, 🥢 doble clip, 🔫 pew de plasma, 🛡️ ping de bloqueo, + fanfarria al obtener la legendaria
-
-## Luchadores (elige tu personaje)
-- 🤖 **Titán Azul** — robot clásico: 100 de vida, velocidad normal
-- 🪖 **Soldado Verde** — humano con casco, chaleco táctico y rifle: 85 de vida pero **+18% de velocidad**
-
-Cambia de personaje con el selector "🤖 Titán / 🪖 Soldado" arriba a la izquierda.
-
-## Personalidades de IA
-- 🧠 **Adaptativa** — aprende de tu patrón: si atacas mucho de cerca, sube bloqueo y contraataque
-- 🔥 **Agresiva** — ataca sin parar, más rápida y daño +25%
-- 🛡️ **Defensiva** — bloquea mucho (92%) y te contraataca
-- 🎲 **Tramposa** — esquiva por completo a veces, te engaña y ataca con especial
-- 🤪 **Grok** — caos total, giros locos sin patrón, esquiva por azar y dice "¡JA!"
-- 💬 **ChatGPT** — estratégico, analiza distancia y usa especial cuando tiene energía (70+)
-- 🧭 **Claude** — paciente, deja que te canses y contraataca con calma, más bloqueo (82%)
-- 🔍 **DeepSeek** — busca tu debilidad: si atacas de cerca persigue y usa patada, si huyes carga especial
-
-Cambia la personalidad con el selector desplegable arriba a la izquierda. Cada una tiene sus frases divertidas que aparecen.
+Juego 3D para celular y PC de pelea **IA vs IA** (con control opcional del jugador), estilo Mortal Kombat: rounds al mejor de 3, bloqueo, launcher, combos, **FINISH HIM** y fatality. Luchadores realistas riggeados con 22 animaciones cada uno.
 
 ## Jugar online
 https://traderxael.github.io/pelea-IA-VS/ (GitHub Pages)
 
-## Modelos 3D animados (Blender + Tripo AI)
-El juego carga automáticamente modelos `.glb` (Idle + Attack) desde `assets/models/`. Titán, Volt y Soldado ya están hechos con Blender. Ver **MODELOS.md** para el pipeline y Tripo AI.
+## Cómo jugar
+Abre `index.html` en tu celular o computadora (también funciona con `file://`, sin servidor). Por defecto arranca en modo **AUTO** (las dos IAs pelean solas); pulsa `🤖 AUTO` para tomar el control de tu luchador.
+
+- **PC:** `WASD` / flechas para moverte, `J` puño, `K` patada, `L` especial, `I` launcher, `Espacio` salto, `Shift` o `U` bloqueo (mantener).
+- **Móvil:** joystick virtual + botones táctiles (👊 puño, 🦵 patada, ⚡ especial, 🚀 launcher, 🛡️ bloqueo, ⬆️ salto). **Doble toque en 👊 = launcher.**
+- **FINISH HIM:** cuando ganas el match, pulsa `J`, `K`, `L` (o los botones 👊🦵⚡) para ejecutar la fatality.
+- **🔊** silencia/activa sonido y voces.
+
+Barras de vida y energía, daño flotante, partículas, cámara que sigue la acción, sacudida de cámara en golpes fuertes.
+
+## Luchadores
+
+### Realistas (HD) — roster principal
+Modelos 3D realistas generados con Rodin, riggeados (esqueleto Mixamo de 52 huesos) y animados con 22 clips. Cada uno tiene un **especial propio**:
+
+- 🥷 **NINJA HD** — 80 de vida, velocidad 1.35. Especial: dash con `Punch2`.
+- 🪖 **SOLDADO HD** — 95 de vida, velocidad 1.12. Especial: proyectil `Special_Cast`.
+- ⚔️ **RONIN HD** — 88 de vida, velocidad 1.22. Especial: onda de choque `SwordAttack` (alcance 4.0).
+
+### Legacy — 13 peleadores low-poly seleccionables
+🤖 Titán, 🪖 Soldado, 🥷 Ninja, ⚔️ Samurai, 🛡️ Gladiador, 🦣 Bruto, 🧛 Vampiro, 🥋 Ronin, 🦏 Rhino, 🐼 Panda, 👩‍🦰 Pelirroja, 👹 Ogro, 🔴 Volt.
+
+Cambia tu personaje y el rival con los selectores de arriba (grupos **REALISTAS (HD)** y **LEGACY**). Si un `.glb` no carga, el juego usa el modelo procedural de respaldo (no se rompe).
+
+## Combate (estilo Mortal Kombat)
+- **Rounds al mejor de 3.** Contador de rondas y de victorias.
+- **Ventanas de golpe activas:** cada ataque tiene su `hitAt` y alcance; el daño solo conecta dentro de la ventana y el cono de frente.
+- **Bloqueo:** reduce el daño a un **chip determinista del 20%** (máx. 5). Mantén `Shift`/`U`/🛡️.
+- **Launcher y juggle:** `I` o doble toque en 👊 lanza al rival al aire; remata con combos aéreos.
+- **Combos y cancels:** `J`,`J` encadena `punch2`; 3+ golpes seguidos sin recibir daño → **+35%** de daño (🔥 contador xN). La IA tiene el mismo sistema con bonus limitado a **+15%**.
+- **FINISH HIM:** al ganar el match aparece la ventana (3 s) para ejecutar la **fatality** con `J`,`K`,`L`.
+- **KO:** el derrotado cae y se hunde; el ganador salta de celebración.
+
+## Armas (elige con la barra superior)
+6 armas con alcance/daño/recarga distintos (la IA también las usa), montadas en la mano derecha (`RightHand`) del esqueleto:
+
+- 🥊 **Puños** — equilibrado.
+- 🗡️ **Espada** — mayor alcance (4.7 m) y +30% daño.
+- 🔨 **Martillo** — daño x2.0 pero lento (recarga 1.75x).
+- 🥢 **Nunkus** — muy rápido (recarga 0.5x).
+- 🪄 **Lanza** — alcance máximo (6.3 m).
+- 🔫 **Plasma** — proyectil a distancia.
+
+### Armas legendarias
+🐉 **Espada de Fuego** y ⚡ **Mjölnir** caen en la arena con un haz de luz. Quien la toma primero hace daño x2.0/x2.6 durante 22 s (período de gracia de 1.5 s antes de recogerla).
+
+## Personalidades de IA + voces gratis
+Cada rival tiene una personalidad con frases y **voz propia** (Web Speech API del navegador, **gratis, sin API key**). Cambia la personalidad con el selector desplegable; cada una tiene timbre (pitch) y velocidad distintos:
+
+- 🤖 **OpenAI** — estratégico, voz grave y pausada.
+- ⚡ **Qwen** — rápido y agresivo, voz aguda y veloz.
+- 🤪 **Grok** — caos total, esquiva por azar, voz muy aguda.
+- 💎 **Gemini** — paciente y defensivo, voz grave y lenta.
+- 🔍 **DeepSeek** — busca tu debilidad, voz muy grave.
+
+Las voces se silencian con 🔊. Si el navegador no tiene voces en español, usa las disponibles del sistema.
+
+## Animaciones (22 clips por luchador HD)
+`Idle`, `Idle2`, `Walk`, `Run`, `KO`, `Punch1`, `Punch2`, `Kick`, `Uppercut`, `Hammer_Overhead`, `SwordAttack`, `Special_Cast`, `HitHigh`, `HitLow`, `Block`, `Knockdown`, `Getup`, `Victory`, `JumpStart`, `JumpLoop`, `JumpLand`, `Roll`.
+
+Caminar, reacción al impacto, KO, victoria, bloqueo y salto importados/retargeteados desde Blender. Transiciones con crossfade (`AnimationMixer`).
+
+## Rendimiento
+- Presupuesto: **<120k triángulos / <150 draw calls** por frame.
+- `pixelRatio` limitado (1.5 móvil / 2 PC), sombras 1024.
+- **Degradación escalonada** si los FPS sostenidos bajan de 25: sombra 512 → pixelRatio 1 → sombras off.
+- Carga HD lazy; los legacy usan 2 clips.
+
+## Modelos 3D (pipeline)
+Los `.glb` HD se generan con **Rodin** (text-to-3D), se riggean con esqueleto Mixamo y se animan retargeteando la librería **UAL** (CC0) + clips autorados en Blender. Ver **MODELOS.md** para el pipeline completo y **DISENO.md** para las decisiones.
+
+## Verificación (tests)
+Requiere `python -m http.server 8123` en la raíz y Chrome instalado. Usa Playwright + Chrome headless con swiftshader (todos los waits por condición de estado, no por tiempo):
+
+```bash
+node tools/smoke.mjs         # carga HD, render, arma en RightHand, layout
+node tools/e2e.mjs           # desktop + móvil (táctil) + file://; rounds, FINISH, fatality, voces
+node tools/verify_hd.mjs     # diagnóstico HD: clips, weapon parent, overflow
+node tools/verify_voice.mjs  # voces por personalidad (pitch/rate distintos) + mute
+```
 
 ## Estructura
-- `index.html` — juego completo (HTML + CSS + JS + Three.js)
-- `MODELOS.md` — pipeline de modelos 3D
-- `assets/models/` — GLB riggeados de Blender (titan, volt, soldier)
-- `tools/blender_build.py` — generador de modelos animados
-- `tools/tripo_generate.py` — generador Tripo API (requiere créditos)
-- `DISENO.md` — diseño y decisiones tomadas
+- `index.html` — juego completo (HTML + CSS + JS + Three.js, módulo inline único para que `file://` funcione).
+- `assets/models/hd_{ninja,soldier,ronin}.glb` — luchadores HD riggeados (22 clips, ≤50k tris).
+- `assets/models/*.glb` — legacy low-poly.
+- `MODELOS.md` — pipeline de modelos 3D (Rodin + retarget UAL).
+- `DISENO.md` — diseño y decisiones.
+- `tools/retarget_ual.py` — retarget Blender UAL→Mixamo + clips autorados.
+- `tools/gltf/` — optimizador e inspector de GLB.
+- `tools/{smoke,e2e,verify_hd,verify_voice}.mjs` — verificación en Chrome real.

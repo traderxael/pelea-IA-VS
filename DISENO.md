@@ -1,5 +1,15 @@
 # Juego Pelea IA vs IA 3D para Celular
 
+> **Nota:** este documento recoge el diseño del prototipo original. El juego evolucionó a combate estilo Mortal Kombat con luchadores HD realistas; ver `README.md` (estado actual) y `MODELOS.md` (pipeline).
+
+## Evolución a Mortal Kombat (decisiones vigentes)
+- **Roster:** 3 luchadores HD realistas (Ninja/Soldado/Ronin; Rodin + rig Mixamo + 22 clips) como principales, más 13 legacy low-poly seleccionables.
+- **Combate MK:** rounds al mejor de 3, ventanas de golpe activas, bloqueo con chip 20%, launcher/juggle, combos y cancels, FINISH HIM + fatality.
+- **Arena y cámara:** se mantiene la arena 3D libre y la cámara que sigue la acción (no vista lateral).
+- **Armas:** se mantienen las 6 + legendarias, adaptadas con clips propios y montadas en `RightHand`.
+- **Voces:** gratis (Web Speech API), timbre/velocidad distintos por personalidad de IA (OpenAI/Qwen/Grok/Gemini/DeepSeek).
+- **Rendimiento:** <120k tris / <150 calls, degradación escalonada si FPS<25.
+
 ## Idea
 Juego 3D de peleas estilo AI Fight en el que 2 robots luchan. El jugador observa (modo espectador IA vs IA) o toma control con joystick + botones.
 
