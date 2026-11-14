@@ -8,3 +8,5 @@ tools/shots/
 tools/probe.mjs
 tools/probe2.mjs
 tools/hd-tasks.json
+tools/_work_*.glb
+tools/*.log
